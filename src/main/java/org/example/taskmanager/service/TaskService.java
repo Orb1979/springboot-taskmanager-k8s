@@ -1,0 +1,96 @@
+package org.example.taskmanager.service;
+
+import lombok.RequiredArgsConstructor;
+import org.example.taskmanager.dto.TaskRequest;
+import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.Task;
+import org.example.taskmanager.entity.TaskHistory;
+import org.example.taskmanager.entity.type.TaskStatus;
+import org.example.taskmanager.exception.ResourceNotFoundException;
+import org.example.taskmanager.exception.TaskAlreadyExistException;
+import org.example.taskmanager.repo.TaskRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class TaskService {
+	private final TaskRepository taskRepository;
+
+	public Optional<Task> getTaskByReferenceId(UUID referenceId){
+		return taskRepository.findByReferenceId(referenceId);
+	}
+
+	@Transactional(readOnly = true)
+	public Task getTask(Long id) {
+		// A plain findById leaves history as an uninitialized proxy — fine inside the transaction, broken once it's over.
+		return taskRepository.findWithHistoryById(id)
+				       .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+	}
+
+	@Transactional(readOnly = true)
+	public List<Task> getTasks() {
+		// A plain findAll leaves history as an uninitialized proxy — fine inside the transaction, broken once it's over.
+		return taskRepository.findAllWithHistoryBy();
+	}
+
+	public Task createTask(TaskRequest request) {
+		if (getTaskByReferenceId(request.referenceId()).isPresent()){
+			throw new TaskAlreadyExistException("Task already exist: " + request.referenceId());
+		}
+    Task task =
+        Task.builder()
+            .name(request.name())
+            .priority(request.priority())
+            .payload(request.payload())
+            .status(TaskStatus.PENDING)
+            .build();
+		task.addHistory(TaskHistory.builder().status(TaskStatus.PENDING).build());
+		return taskRepository.save(task);
+	}
+
+	public Task updateTask(Long id, TaskRequest request) {
+		Task task = findTaskOrThrow(id);
+		if (request.name() != null) {
+			task.setName(request.name());
+		}
+		if (request.payload() != null) {
+			task.setPayload(request.payload());
+		}
+		if (request.priority() != null) {
+			task.setPriority(request.priority());
+		}
+		return taskRepository.save(task);
+	}
+
+	public Task updateTaskStatus(Long id, TaskStatusUpdate update) {
+		Task task = findTaskOrThrow(id);
+		task.setStatus(update.status());
+		if (isTerminal(update.status())) {
+			task.setFinishedAt(LocalDateTime.now());
+		}
+		return taskRepository.save(task);
+
+	}
+
+	public void deleteTask(Long id) {
+		taskRepository.delete(findTaskOrThrow(id));
+	}
+
+	private boolean isTerminal(TaskStatus status) {
+		return status == TaskStatus.COMPLETED
+				       || status == TaskStatus.FAILED
+				       || status == TaskStatus.CANCELED;
+	}
+
+	private Task findTaskOrThrow(Long id) {
+		return taskRepository.findById(id)
+				       .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+	}
+}
