@@ -17,14 +17,14 @@ import java.util.function.Function;
 
 @Log4j2
 @Service
-public class ExecutionService {
+public class TaskRunService {
 	private final TaskService taskService;
 	private final TaskHistoryService taskHistoryService;
   private final KubernetesService kubernetesService;
   private final String workerImage;
   private final String kafkaBootstrapServers;
 
-  public ExecutionService(
+  public TaskRunService(
       TaskService taskService,
       TaskHistoryService taskHistoryService,
       KubernetesService kubernetesService,

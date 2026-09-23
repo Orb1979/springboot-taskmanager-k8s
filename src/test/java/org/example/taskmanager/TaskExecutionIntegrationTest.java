@@ -6,7 +6,7 @@ import org.example.taskmanager.dto.TaskStatusUpdate;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
-import org.example.taskmanager.service.ExecutionService;
+import org.example.taskmanager.service.TaskRunService;
 import org.example.taskmanager.service.KubernetesService;
 import org.example.taskmanager.service.TaskHistoryService;
 import org.example.taskmanager.service.TaskService;
@@ -34,7 +34,7 @@ KubernetesService is @MockBean, we don't want a real cluster call in a DB integr
 @TestPropertySource(value = "classpath:integration.properties")
 @ActiveProfiles("integration")
 class TaskExecutionIntegrationTest {
-  @Autowired private ExecutionService executionService;
+  @Autowired private TaskRunService taskRunService;
   @Autowired private TaskService taskService;
   @Autowired private TaskHistoryService taskHistoryService;
   @MockitoBean private KubernetesService kubernetesService;
@@ -42,13 +42,13 @@ class TaskExecutionIntegrationTest {
   @Test
   void createPendingTask() {
     TaskRequest request = new TaskRequest("pending-task", "{}", Priority.HIGH);
-    executionService.createAndExecuteTask(request);
+    taskRunService.createAndExecuteTask(request);
   }
 
   @Test
   void createAndCompleteTask() {
     TaskRequest request = new TaskRequest("completed-task", "{}", Priority.HIGH);
-    Task createdTask = executionService.createAndExecuteTask(request);
+    Task createdTask = taskRunService.createAndExecuteTask(request);
     taskService.updateTaskStatus(createdTask.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
   }
 
@@ -61,7 +61,7 @@ class TaskExecutionIntegrationTest {
 
     // Act + Assert
     RuntimeException ex = assertThrows(RuntimeException.class,
-        () -> executionService.createAndExecuteTask(request));
+        () -> taskRunService.createAndExecuteTask(request));
     assertThat(ex).hasMessageContaining("k8s down");
   }
 
@@ -69,12 +69,12 @@ class TaskExecutionIntegrationTest {
   void executeFailedTask_again_reExecutesSuccessfully() {
     // Arrange
     TaskRequest request = new TaskRequest("task-first-attempt", "{}", Priority.HIGH);
-    Task created = executionService.createAndExecuteTask(request);
+    Task created = taskRunService.createAndExecuteTask(request);
     Task updated = taskService.updateTaskStatus(created.getId(), new TaskStatusUpdate(TaskStatus.FAILED, "error"));
     taskHistoryService.createHistory(updated.getId(), new TaskHistoryRequest(TaskStatus.FAILED, "error"));
 
     TaskRequest reRequest = new TaskRequest(updated.getReferenceId(), "task-rerun", "{}", Priority.HIGH);
-    Task reCreated = executionService.createAndExecuteTask(reRequest);
+    Task reCreated = taskRunService.createAndExecuteTask(reRequest);
     Task reUpdated = taskService.updateTaskStatus(reCreated.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
     taskHistoryService.createHistory(updated.getId(), new TaskHistoryRequest(TaskStatus.COMPLETED));
 

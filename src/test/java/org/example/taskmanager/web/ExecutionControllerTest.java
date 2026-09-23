@@ -6,7 +6,7 @@ import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.TaskAlreadyCompletedException;
-import org.example.taskmanager.service.ExecutionService;
+import org.example.taskmanager.service.TaskRunService;
 import org.example.taskmanager.service.KubernetesService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +57,7 @@ class ExecutionControllerTest {
 	@Autowired private MockMvc mockMvc;
 	@Autowired private ObjectMapper objectMapper;
 
-	@MockitoBean private ExecutionService executionService;
+	@MockitoBean private TaskRunService taskRunService;
 	@MockitoBean private KubernetesService kubernetesService;
 
 	private Task sampleTask(TaskStatus status) {
@@ -75,7 +75,7 @@ class ExecutionControllerTest {
 		// Arrange
 		TaskRequest request = new TaskRequest("some-task-name", "{}", Priority.HIGH);
 		Task task = sampleTask(TaskStatus.PENDING);
-		when(executionService.createAndExecuteTask(any())).thenReturn(task);
+		when(taskRunService.createAndExecuteTask(any())).thenReturn(task);
 
 		// Act + Assert
 		mockMvc
@@ -92,7 +92,7 @@ class ExecutionControllerTest {
 	void executeExistingTask() throws Exception {
 		// Arrange
 		Task submitted = sampleTask(TaskStatus.PENDING);
-		when(executionService.execTask(1L)).thenReturn(submitted);
+		when(taskRunService.execTask(1L)).thenReturn(submitted);
 
 		// Act + Assert
 		mockMvc
@@ -105,7 +105,7 @@ class ExecutionControllerTest {
 	@Test
 	void executeTask_alreadyCompleted_returnsServerError() throws Exception {
 		// Arrange
-		when(executionService.execTask(anyLong()))
+		when(taskRunService.execTask(anyLong()))
 				.thenThrow(new TaskAlreadyCompletedException("Task with reference id: x is already completed"));
 
 		// Act + Assert
