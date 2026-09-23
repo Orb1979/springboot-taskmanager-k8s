@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.example.taskmanager.exception.K8sJobAlreadyExistException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.function.Function;
@@ -61,11 +62,13 @@ public class KubernetesService {
     }
   }
 
-  public List<Job> getAllJobs() {
-    return kubernetesClient.batch().v1().jobs().
-        inNamespace("default")
-        .list()
-        .getItems();
+  /** @param label optional value of Kubernetes label key {@code name}; omit to list all jobs */
+  public List<Job> listJobs(String label) {
+    var jobs = kubernetesClient.batch().v1().jobs().inNamespace("default");
+    if (StringUtils.hasText(label)) {
+      return jobs.withLabel("name", label).list().getItems();
+    }
+    return jobs.list().getItems();
   }
 
   public Job getJobsByName(String name) {
@@ -75,18 +78,17 @@ public class KubernetesService {
         .get();
   }
 
-  public List<Job> getJobsByLabel(String label) {
-    return kubernetesClient.batch().v1().jobs().
-        inNamespace("default")
-        .withLabel("name", label)
-        .list()
-        .getItems();
-  }
-
-  public void deleteAllJobs() {
+  /** @param label optional value of Kubernetes label key {@code name}; omit to delete all jobs */
+  public void deleteJobs(String label) {
     try {
-      kubernetesClient.batch().v1().jobs().inNamespace("default").delete();
-      log.info("Successfully deleted all Kubernetes jobs");
+      var jobs = kubernetesClient.batch().v1().jobs().inNamespace("default");
+      if (StringUtils.hasText(label)) {
+        jobs.withLabel("name", label).delete();
+        log.info("Successfully deleted Kubernetes jobs with label name={}", label);
+      } else {
+        jobs.delete();
+        log.info("Successfully deleted all Kubernetes jobs");
+      }
     } catch (KubernetesClientException e) {
       log.error("Failed to delete Kubernetes jobs due to an unexpected error", e);
       throw e;
@@ -97,16 +99,6 @@ public class KubernetesService {
     try {
       kubernetesClient.batch().v1().jobs().inNamespace("default").withName(name).delete();
       log.info("Successfully deleted Kubernetes job for name {}", name);
-    } catch (KubernetesClientException e) {
-      log.error("Failed to delete Kubernetes job due to an unexpected error", e);
-      throw e;
-    }
-  }
-
-  public void deleteJobsByLabel(String label) {
-    try {
-      kubernetesClient.batch().v1().jobs().inNamespace("default").withLabel(label).delete();
-      log.info("Successfully deleted Kubernetes job for label {}", label);
     } catch (KubernetesClientException e) {
       log.error("Failed to delete Kubernetes job due to an unexpected error", e);
       throw e;

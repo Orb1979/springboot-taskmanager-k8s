@@ -15,8 +15,8 @@ public class KubernetesController {
 	private final KubernetesService kubernetesService;
 
 	@GetMapping
-	public ResponseEntity<List<Job>> getAllJobs() {
-		return ResponseEntity.ok(kubernetesService.getAllJobs());
+	public ResponseEntity<List<Job>> listJobs(@RequestParam(required = false) String label) {
+		return ResponseEntity.ok(kubernetesService.listJobs(label));
 	}
 
 	@GetMapping("/{name}")
@@ -28,26 +28,15 @@ public class KubernetesController {
 		return ResponseEntity.ok(job);
 	}
 
-	@GetMapping("/label/{label}")
-	public ResponseEntity<List<Job>> getJobsByLabel(@PathVariable String label) {
-		return ResponseEntity.ok(kubernetesService.getJobsByLabel(label));
-	}
-
 	@DeleteMapping
-	public ResponseEntity<Void> deleteAllJobs() {
-		kubernetesService.deleteAllJobs();
+	public ResponseEntity<Void> deleteJobs(@RequestParam(required = false) String label) {
+		kubernetesService.deleteJobs(label);
 		return ResponseEntity.noContent().build();
 	}
 
 	@DeleteMapping("/{name}")
 	public ResponseEntity<Void> deleteJobsByName(@PathVariable String name) {
 		kubernetesService.deleteJobsByName(name);
-		return ResponseEntity.noContent().build();
-	}
-
-	@DeleteMapping("/label/{label}")
-	public ResponseEntity<Void> deleteJobsByLabel(@PathVariable String label) {
-		kubernetesService.deleteJobsByLabel(label);
 		return ResponseEntity.noContent().build();
 	}
 
