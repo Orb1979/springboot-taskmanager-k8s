@@ -38,7 +38,7 @@ public class ExecutionService {
     this.kafkaBootstrapServers = kafkaBootstrapServers;
   }
 
-  public Task createTaskAndExecute(TaskRequest taskRequest) {
+  public Task createAndExecuteTask(TaskRequest taskRequest) {
     return execTask(resolveTask(taskRequest));
   }
 

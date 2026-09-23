@@ -32,7 +32,7 @@ public class ExecutionController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public TaskResponse createAndExecute(@RequestBody TaskRequest request) {
 		// create a task from the request and directly execute it
-		return TaskResponse.from(executionService.createTaskAndExecute(request));
+		return TaskResponse.from(executionService.createAndExecuteTask(request));
 	}
 }
 

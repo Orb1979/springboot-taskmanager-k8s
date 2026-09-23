@@ -75,7 +75,7 @@ class ExecutionControllerTest {
 		// Arrange
 		TaskRequest request = new TaskRequest("some-task-name", "{}", Priority.HIGH);
 		Task task = sampleTask(TaskStatus.PENDING);
-		when(executionService.createTaskAndExecute(any())).thenReturn(task);
+		when(executionService.createAndExecuteTask(any())).thenReturn(task);
 
 		// Act + Assert
 		mockMvc

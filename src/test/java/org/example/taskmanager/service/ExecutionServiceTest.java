@@ -96,7 +96,7 @@ class ExecutionServiceTest {
 	}
 
 	@Test
-	void createTaskAndExecute_taskRequest_has_no_referenceId() {
+	void createTaskAndExecute_Request_has_no_referenceIdTask() {
 		// Arrange
 		TaskRequest request = new TaskRequest("task1", "{}", Priority.HIGH);
 		Task created = pendingTask();;
@@ -104,7 +104,7 @@ class ExecutionServiceTest {
 		when(taskService.getTask(created.getId())).thenReturn(created);
 
 		// Act
-		Task result = executionService.createTaskAndExecute(request);
+		Task result = executionService.createAndExecuteTask(request);
 
 		// Assert
 		verify(taskService).createTask(request);
@@ -113,7 +113,7 @@ class ExecutionServiceTest {
 	}
 
 	@Test
-	void createTaskAndExecute_task_request_has_referenceId_which_exists() {
+	void createTaskAndExecute__request_has_referenceId_which_existsTask() {
 		// Arrange
 		UUID refId = UUID.randomUUID();
 		TaskRequest request = new TaskRequest(refId, "task1", "{}", Priority.HIGH);
@@ -122,7 +122,7 @@ class ExecutionServiceTest {
 		when(taskService.getTask(existing.getId())).thenReturn(existing);
 
 		// Act
-		executionService.createTaskAndExecute(request);
+		executionService.createAndExecuteTask(request);
 
 		// Assert
 		verify(taskService, never()).createTask(any());
@@ -130,14 +130,14 @@ class ExecutionServiceTest {
 	}
 
 	@Test
-	void createTaskAndExecute_task_request_has_referenceId_which_not_exists() {
+	void createTaskAndExecute__request_has_referenceId_which_not_existsTask() {
 		// Arrange
 		UUID notExistingReferenceId = UUID.randomUUID();
 		TaskRequest request = new TaskRequest(notExistingReferenceId, "task1", "{}", Priority.HIGH);
 		when(taskService.getTaskByReferenceId(request.referenceId())).thenReturn(Optional.empty());
 
 		// Act + Assert
-		assertThrows(ResourceNotFoundException.class, () -> executionService.createTaskAndExecute(request));
+		assertThrows(ResourceNotFoundException.class, () -> executionService.createAndExecuteTask(request));
 	}
 
 

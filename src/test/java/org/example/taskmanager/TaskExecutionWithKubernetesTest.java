@@ -29,14 +29,14 @@ class TaskExecutionWithKubernetesTest {
   @Test
   void createAndExecuteTask_realKubernetes() {
     TaskRequest request = new TaskRequest("real-k8s-task", "{\"durationSeconds\": 10, \"monkey\": \"balls\"}", Priority.HIGH);
-    Task result = executionService.createTaskAndExecute(request);
+    Task result = executionService.createAndExecuteTask(request);
     assertThat(result.getStatus()).isEqualTo(TaskStatus.PENDING);
   }
 
   @Test
   void createAndExecuteTask_task_which_takes_extremely_long() {
     TaskRequest request = new TaskRequest("real-k8s-task", "{\"durationSeconds\": 3600, \"monkey\": \"balls\"}", Priority.HIGH);
-    Task result = executionService.createTaskAndExecute(request);
+    Task result = executionService.createAndExecuteTask(request);
 
     assertThat(result.getStatus()).isEqualTo(TaskStatus.PENDING);
   }

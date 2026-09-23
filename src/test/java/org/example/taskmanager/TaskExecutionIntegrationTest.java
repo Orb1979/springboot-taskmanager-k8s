@@ -42,13 +42,13 @@ class TaskExecutionIntegrationTest {
   @Test
   void createPendingTask() {
     TaskRequest request = new TaskRequest("pending-task", "{}", Priority.HIGH);
-    executionService.createTaskAndExecute(request);
+    executionService.createAndExecuteTask(request);
   }
 
   @Test
   void createAndCompleteTask() {
     TaskRequest request = new TaskRequest("completed-task", "{}", Priority.HIGH);
-    Task createdTask = executionService.createTaskAndExecute(request);
+    Task createdTask = executionService.createAndExecuteTask(request);
     taskService.updateTaskStatus(createdTask.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
   }
 
@@ -61,7 +61,7 @@ class TaskExecutionIntegrationTest {
 
     // Act + Assert
     RuntimeException ex = assertThrows(RuntimeException.class,
-        () -> executionService.createTaskAndExecute(request));
+        () -> executionService.createAndExecuteTask(request));
     assertThat(ex).hasMessageContaining("k8s down");
   }
 
@@ -69,12 +69,12 @@ class TaskExecutionIntegrationTest {
   void executeFailedTask_again_reExecutesSuccessfully() {
     // Arrange
     TaskRequest request = new TaskRequest("task-first-attempt", "{}", Priority.HIGH);
-    Task created = executionService.createTaskAndExecute(request);
+    Task created = executionService.createAndExecuteTask(request);
     Task updated = taskService.updateTaskStatus(created.getId(), new TaskStatusUpdate(TaskStatus.FAILED, "error"));
     taskHistoryService.createHistory(updated.getId(), new TaskHistoryRequest(TaskStatus.FAILED, "error"));
 
     TaskRequest reRequest = new TaskRequest(updated.getReferenceId(), "task-rerun", "{}", Priority.HIGH);
-    Task reCreated = executionService.createTaskAndExecute(reRequest);
+    Task reCreated = executionService.createAndExecuteTask(reRequest);
     Task reUpdated = taskService.updateTaskStatus(reCreated.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
     taskHistoryService.createHistory(updated.getId(), new TaskHistoryRequest(TaskStatus.COMPLETED));
 
