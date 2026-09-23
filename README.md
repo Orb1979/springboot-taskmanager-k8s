@@ -34,7 +34,7 @@ http://localhost:8081/
 
 # test the worker in kubectl
 kubectl get po
-kubectl get jops
+kubectl get jobs
 kubectl delete jobs <name>
 kubectl delete jobs --all
 ```
@@ -83,7 +83,7 @@ Linux host (Rancher Desktop)
   │                             │    │                             │ 
   │  ┌─────────────────────┐    │    │  ┌─────────────────────┐    │ 
   │  │ Worker pods         │    │    │  │ Kafka + Zookeeper   │    │ 
-  │  │ Python script,      │───────▶ │  │                     │    │ 
+  │  │ Python script,      │───────▶│  │                     │    │ 
   │  │ task env vars       │  host   │  └─────────────────────┘    │ 
   │  │                     │  gateway│  ┌─────────────────────┐    │ 
   │  │                     │  ip:9093│  │ Kafka UI            │    │ 
@@ -102,8 +102,6 @@ Worker pods → Kafka: via host gateway IP on a dedicated PODNET listener port (
 ````
 Production Setup with Managed Kafka (e.g. AWS MSK / Confluent Cloud)
 
-Production Setup with Managed Kafka (e.g. AWS MSK / Confluent Cloud)
-
   ┌─────────────────────────────────────────────┐
   │            Kubernetes Cluster (VPC)         │
   │                                             │
@@ -115,7 +113,7 @@ Production Setup with Managed Kafka (e.g. AWS MSK / Confluent Cloud)
   │           │                                 │
   │           │ in-cluster K8s API              │
   │           ▼                                 │
-  │   ┌─────────────────┐                       │
+  │   ┌──────────────────┐                      │
   │   │  Worker Job Pods │                      │
   │   │  (Python script) │                      │
   │   │  env:            │                      │
@@ -126,8 +124,8 @@ Production Setup with Managed Kafka (e.g. AWS MSK / Confluent Cloud)
                │
                │ TLS + SASL/IAM
                │ bootstrap-servers
-               │ (used by BOTH Spring Boot app
-               │  and Worker pods)
+               │ (used by BOTH Spring Boot app and Worker pods)
+               │  
                ▼
   ┌─────────────────────────────────────────────┐
   │          Managed Kafka Service              │
@@ -139,9 +137,13 @@ Production Setup with Managed Kafka (e.g. AWS MSK / Confluent Cloud)
   └─────────────────────────────────────────────┘
 
 Key connections:
-- Spring Boot app -> K8s API: in-cluster ServiceAccount (RBAC)
+- Spring Boot app -> Kubernetes API: in-cluster ServiceAccount (RBAC)
 - Spring Boot app -> Kafka: bootstrap-servers endpoint, TLS + SASL/IAM auth
 - Worker pods -> Kafka: same bootstrap-servers endpoint, same auth
 - Kafka cluster: fully managed, no listener config needed on your side
+
+PostgreSQL is often hosted outside the Kubernetes cluster, usually as a managed database service. 
+The Spring Boot app connects to its private hostname over the network. 
+This keeps database storage, backups, and upgrades separate from the app cluster.
 
 ```
