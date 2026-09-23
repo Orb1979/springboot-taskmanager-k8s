@@ -41,8 +41,18 @@ public class ExecutionService {
   public Task createTaskAndExecute(TaskRequest taskRequest) {
     return execTask(resolveTask(taskRequest));
   }
+
   public Task execTask(Long taskId) {
     return execTask(taskService.getTask(taskId));
+  }
+
+  public void cancelTask(Long taskId) {
+    Task task = execTask(taskService.getTask(taskId));
+    taskService.updateTaskStatus(
+        task.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
+    taskHistoryService.createHistory(
+        task.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
+    kubernetesService.deleteJobsByName(getJobName(task));
   }
 
   private Task resolveTask(TaskRequest request) {
@@ -55,23 +65,17 @@ public class ExecutionService {
                    "Task with reference id: %s not found".formatted(referenceId)));
   }
 
+  private String getJobName(Task task) {
+    return task.getName() + "-" + task.getReferenceId();
+  }
+
   private Task execTask(Task task) {
     if (task.getStatus() == TaskStatus.COMPLETED) {
       throw new TaskAlreadyCompletedException(
           "Task with reference id: %s is already completed".formatted(task.getReferenceId()));
     }
 
-    String jobName = task.getName() + "-" + task.getReferenceId().toString();
-    log.info("""
-        Executing task with:
-        \tjobName:                {}
-        \tworkerImage:            {}
-        \tkafkaBootstrapServers:  {}
-        \ttask.id:                {}
-        \ttask.referenceId:       {}
-        \ttask.payload:           {}""",
-        jobName, workerImage, kafkaBootstrapServers, task.getId(), task.getReferenceId(), task.getPayload());
-
+    String jobName = getJobName(task);
     try {
       // adding Task payload to the config builder (keeping kubernetesService decoupled from Task)
       kubernetesService.createJob(jobName, workerImage, withTaskEnv(task));

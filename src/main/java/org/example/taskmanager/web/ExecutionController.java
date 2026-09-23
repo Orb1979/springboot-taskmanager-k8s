@@ -21,10 +21,17 @@ public class ExecutionController {
 		return TaskResponse.from(executionService.execTask(taskId));
 	}
 
+	@DeleteMapping("/{taskId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void cancel(@PathVariable Long taskId) {
+		// cancel a task, which we already created
+		executionService.cancelTask(taskId);
+	}
+
 	@PostMapping()
 	@ResponseStatus(HttpStatus.CREATED)
 	public TaskResponse createAndExecute(@RequestBody TaskRequest request) {
-		// create a task and directly execute it
+		// create a task from the request and directly execute it
 		return TaskResponse.from(executionService.createTaskAndExecute(request));
 	}
 }

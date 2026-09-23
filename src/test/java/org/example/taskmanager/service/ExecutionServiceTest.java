@@ -139,4 +139,35 @@ class ExecutionServiceTest {
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class, () -> executionService.createTaskAndExecute(request));
 	}
+
+
+	@Test
+	void cancelTaskAndExecute_taskRequest_has_no_referenceId() {
+		// Arrange
+		Long notExistingTaskId = 9999L;
+		when(taskService.getTask(notExistingTaskId))
+				.thenThrow(new ResourceNotFoundException("Task not found with id: " + notExistingTaskId));
+
+		// Act + Assert
+		assertThrows(ResourceNotFoundException.class, () -> executionService.cancelTask(notExistingTaskId));
+		verify(kubernetesService, never()).deleteJobsByName(anyString());
+	}
+
+	@Test
+	void cancelTaskAndExecute_taskRequest_has_referenceId_which_exists() {
+		// Arrange
+		Task existing = pendingTask();
+		String jobName = existing.getName() + "-" + existing.getReferenceId();
+		when(taskService.getTask(existing.getId())).thenReturn(existing);
+
+		// Act
+		executionService.cancelTask(existing.getId());
+
+		// Assert
+		verify(taskService).updateTaskStatus(
+				existing.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
+		verify(taskHistoryService).createHistory(
+				existing.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
+		verify(kubernetesService).deleteJobsByName(jobName);
+	}
 }
