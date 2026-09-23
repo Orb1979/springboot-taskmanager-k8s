@@ -1,10 +1,12 @@
 .gradle
 gradle
 build/
+bin/
+dist/
 !**/src/main/**/build/
 !**/src/test/**/build/
-### IntelliJ IDEA ###
 
+### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
