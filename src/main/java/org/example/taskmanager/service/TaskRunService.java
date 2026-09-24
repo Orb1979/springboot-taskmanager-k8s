@@ -12,6 +12,7 @@ import org.example.taskmanager.exception.TaskAlreadyCompletedException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -47,7 +48,7 @@ public class TaskRunService {
   }
 
   public void cancelTask(Long taskId) {
-    Task task = execTask(taskService.getTask(taskId));
+    Task task = taskService.getTask(taskId);
     taskService.updateTaskStatus(
         task.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
     taskHistoryService.createHistory(
@@ -77,7 +78,6 @@ public class TaskRunService {
 
     String jobName = getJobName(task);
     try {
-      // adding Task payload to the config builder (keeping kubernetesService decoupled from Task)
       kubernetesService.createJob(jobName, workerImage, withTaskEnv(task));
     } catch (Exception e) {
       taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.FAILED, e.getMessage()));
@@ -88,9 +88,13 @@ public class TaskRunService {
   }
 
   private Function<ContainerBuilder, ContainerBuilder> withTaskEnv(Task task) {
+    // adding Task payload to the config builder (keeping kubernetesService decoupled from Task)
+    // Task.payload is a non required field in the db, it will get normalized to null if blank
+    // when passing the value as env variable through kubernetes, pass an empty json string, when its null
+    String taskPayload = Objects.requireNonNullElse(task.getPayload(), "{}");
     return builder -> builder
       .addNewEnv().withName("TASK_ID").withValue(String.valueOf(task.getId())).endEnv()
-      .addNewEnv().withName("TASK_PAYLOAD").withValue(task.getPayload()).endEnv()
+      .addNewEnv().withName("TASK_PAYLOAD").withValue(taskPayload).endEnv()
       .addNewEnv().withName("TASK_REFERENCE_ID").withValue(task.getReferenceId().toString()).endEnv()
       .addNewEnv().withName("KAFKA_BOOTSTRAP_SERVERS").withValue(kafkaBootstrapServers).endEnv();
   }
