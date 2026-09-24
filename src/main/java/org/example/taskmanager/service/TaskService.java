@@ -11,6 +11,8 @@ import org.example.taskmanager.exception.TaskAlreadyExistException;
 import org.example.taskmanager.repo.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.UUID;
 @Transactional
 public class TaskService {
 	private final TaskRepository taskRepository;
+	private final ObjectMapper objectMapper;
 
 	public Optional<Task> getTaskByReferenceId(UUID referenceId){
 		return taskRepository.findByReferenceId(referenceId);
@@ -48,7 +51,7 @@ public class TaskService {
         Task.builder()
             .name(request.name())
             .priority(request.priority())
-            .payload(request.payload())
+            .payload(normalizePayload(request.payload()))
             .status(TaskStatus.PENDING)
             .build();
 		task.addHistory(TaskHistory.builder().status(TaskStatus.PENDING).build());
@@ -61,7 +64,7 @@ public class TaskService {
 			task.setName(request.name());
 		}
 		if (request.payload() != null) {
-			task.setPayload(request.payload());
+			task.setPayload(normalizePayload(request.payload()));
 		}
 		if (request.priority() != null) {
 			task.setPriority(request.priority());
@@ -76,7 +79,18 @@ public class TaskService {
 			task.setFinishedAt(LocalDateTime.now());
 		}
 		return taskRepository.save(task);
+	}
 
+	private String normalizePayload(String payload) {
+		if (payload == null || payload.isBlank()) {
+			return null;
+		}
+		try {
+			objectMapper.readTree(payload);
+			return payload;
+		} catch (JacksonException exception) {
+			throw new IllegalArgumentException("Payload must contain valid JSON", exception);
+		}
 	}
 
 	public void deleteTask(Long id) {
