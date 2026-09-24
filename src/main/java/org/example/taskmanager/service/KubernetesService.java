@@ -42,6 +42,7 @@ public class KubernetesService {
           .addToLabels("name", "worker") // Add KV label for easier cleanup or lookup
         .endMetadata()
         .withNewSpec()
+        .withBackoffLimit(0) // one failed pod causes the Job to fail immediately
         .withTtlSecondsAfterFinished(60)
           .withNewTemplate()
             .withNewSpec()
