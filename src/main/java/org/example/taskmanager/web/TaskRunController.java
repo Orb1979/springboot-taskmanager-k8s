@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/execute")
 @RequiredArgsConstructor
-public class ExecutionController {
+public class TaskRunController {
 	private final TaskRunService taskRunService;
 
 	@GetMapping("/{taskId}")

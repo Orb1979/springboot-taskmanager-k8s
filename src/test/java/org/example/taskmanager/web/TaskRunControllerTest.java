@@ -52,8 +52,8 @@ You're testing that the controller:
   - returns the correct JSON
 */
 
-@WebMvcTest(ExecutionController.class)
-class ExecutionControllerTest {
+@WebMvcTest(TaskRunController.class)
+class TaskRunControllerTest {
 	@Autowired private MockMvc mockMvc;
 	@Autowired private ObjectMapper objectMapper;
 
