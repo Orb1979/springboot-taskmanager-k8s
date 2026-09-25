@@ -45,6 +45,7 @@ public class Task {
   @Column(nullable = false)
   private LocalDateTime updatedAt;
 
+  // note: finishedAt is intended any final state, so COMPLETED, FAILED, CANCELED
   @Column private LocalDateTime finishedAt;
 
   @Enumerated(EnumType.STRING)

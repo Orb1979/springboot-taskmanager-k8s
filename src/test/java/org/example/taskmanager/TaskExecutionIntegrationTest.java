@@ -81,16 +81,21 @@ class TaskExecutionIntegrationTest {
 	  Task first = taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.FAILED, "error"));
     taskHistoryService.createHistory(first.getId(), new TaskHistoryRequest(TaskStatus.FAILED, "error"));
 
+		// task would need to be reset to pending, before it can start again
+	  Task reset = taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.PENDING, "error"));
+	  taskHistoryService.createHistory(reset.getId(), new TaskHistoryRequest(TaskStatus.PENDING));
+
 	  // run second time, it succeeds
 	  taskRunService.execTask(task.getId());
-	  Task second = taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
-	  taskHistoryService.createHistory(second.getId(), new TaskHistoryRequest(TaskStatus.COMPLETED));
+	  Task reRun = taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
+	  taskHistoryService.createHistory(reRun.getId(), new TaskHistoryRequest(TaskStatus.COMPLETED));
 
     // Assert
     assertThat(first.getStatus()).isEqualTo(TaskStatus.FAILED);
-    assertThat(second.getStatus()).isEqualTo(TaskStatus.COMPLETED);
-    assertThat(second.getFinishedAt()).isNotNull();
-    assertThat(second.getHistory().size()).isGreaterThan(1);
+	  assertThat(reset.getStatus()).isEqualTo(TaskStatus.PENDING);
+    assertThat(reRun.getStatus()).isEqualTo(TaskStatus.COMPLETED);
+    assertThat(reRun.getFinishedAt()).isNotNull();
+    assertThat(reRun.getHistory().size()).isGreaterThan(1);
   }
 }
 

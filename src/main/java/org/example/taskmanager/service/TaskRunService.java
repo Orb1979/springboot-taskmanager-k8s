@@ -6,7 +6,7 @@ import org.example.taskmanager.dto.TaskHistoryRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.TaskStatus;
-import org.example.taskmanager.exception.TaskAlreadyCompletedException;
+import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -54,9 +54,11 @@ public class TaskRunService {
   }
 
   private Task execTask(Task task) {
-    if (task.getStatus() == TaskStatus.COMPLETED) {
-      throw new TaskAlreadyCompletedException(
-          "Task with reference id: %s is already completed".formatted(task.getReferenceId()));
+
+    if(task.getStatus() != TaskStatus.PENDING) {
+      throw new TaskNonStartableStateException(
+          "Task with reference id: %s is not in a state that it may be started: %s".formatted(
+              task.getReferenceId(), task.getStatus()));
     }
 
     String jobName = getJobName(task);

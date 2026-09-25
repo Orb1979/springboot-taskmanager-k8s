@@ -4,7 +4,7 @@ import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
-import org.example.taskmanager.exception.TaskAlreadyCompletedException;
+import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.example.taskmanager.service.KubernetesService;
 import org.example.taskmanager.service.TaskRunService;
 import org.junit.jupiter.api.Test;
@@ -83,7 +83,7 @@ class TaskRunControllerTest {
 	@Test
 	void executeTask_alreadyCompleted_returnsConflict() throws Exception {
 		when(taskRunService.execTask(anyLong()))
-				.thenThrow(new TaskAlreadyCompletedException("Task with reference id: x is already completed"));
+				.thenThrow(new TaskNonStartableStateException("Task with reference id: x is already completed"));
 
 		mockMvc
 				.perform(post("/api/v1/execute/1"))

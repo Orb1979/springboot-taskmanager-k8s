@@ -2,7 +2,7 @@ package org.example.taskmanager.web;
 
 import org.example.taskmanager.exception.K8sJobAlreadyExistException;
 import org.example.taskmanager.exception.ResourceNotFoundException;
-import org.example.taskmanager.exception.TaskAlreadyCompletedException;
+import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,7 +28,7 @@ public class ApiExceptionHandler {
 	}
 
 	@ExceptionHandler({
-			TaskAlreadyCompletedException.class,
+			TaskNonStartableStateException.class,
 			K8sJobAlreadyExistException.class
 	})
 	public ProblemDetail handleConflict(RuntimeException exception) {

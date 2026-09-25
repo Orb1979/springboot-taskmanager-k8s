@@ -69,10 +69,13 @@ public class TaskService {
 	}
 
 	public Task updateTaskStatus(Long id, TaskStatusUpdate update) {
+		// we can update to any state, atm there is no allowed-transition check (not a state machine)
 		Task task = getTask(id);
 		task.setStatus(update.status());
 		if (isTerminal(update.status())) {
 			task.setFinishedAt(LocalDateTime.now());
+		} else {
+			task.setFinishedAt(null);
 		}
 		return taskRepository.save(task);
 	}

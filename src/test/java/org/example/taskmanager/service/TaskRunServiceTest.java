@@ -5,10 +5,12 @@ import org.example.taskmanager.dto.TaskStatusUpdate;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
-import org.example.taskmanager.exception.TaskAlreadyCompletedException;
+import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -61,15 +63,19 @@ class TaskRunServiceTest {
 		assertThat(result).isEqualTo(task);
 	}
 
-	@Test
-	void execTask_alreadyCompleted() {
+	@ParameterizedTest
+	@EnumSource(
+			value = TaskStatus.class,
+			names = {"COMPLETED", "FAILED", "RUNNING", "CANCELED"}
+	)
+	void execTask_is_not_startable(TaskStatus status) {
 		// Arrange
-		Task task = pendingTask();;
-		task.setStatus(TaskStatus.COMPLETED);
+		Task task = pendingTask();
+		task.setStatus(status);
 		when(taskService.getTask(1L)).thenReturn(task);
 
 		// Act + Assert
-		assertThrows(TaskAlreadyCompletedException.class, () -> taskRunService.execTask(1L));
+		assertThrows(TaskNonStartableStateException.class, () -> taskRunService.execTask(1L));
 		verify(kubernetesService, never()).createJob(anyString(), anyString(), any());
 		verify(taskService, never()).updateTaskStatus(any(), any());
 		verify(taskHistoryService, never()).createHistory(any(), any());
