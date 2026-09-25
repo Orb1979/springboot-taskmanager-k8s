@@ -1,23 +1,22 @@
 package org.example.taskmanager.web;
 
-import jakarta.servlet.ServletException;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
+import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskAlreadyCompletedException;
 import org.example.taskmanager.service.KubernetesService;
 import org.example.taskmanager.service.TaskRunService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.UUID;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -49,6 +48,7 @@ You're testing that the controller:
 */
 
 @WebMvcTest(TaskRunController.class)
+@Import(ApiExceptionHandler.class)
 class TaskRunControllerTest {
 	@Autowired private MockMvc mockMvc;
 	@Autowired private ObjectMapper objectMapper;
@@ -81,24 +81,35 @@ class TaskRunControllerTest {
 	}
 
 	@Test
-	void executeTask_alreadyCompleted_returnsServerError() throws Exception {
-		// Arrange
+	void executeTask_alreadyCompleted_returnsConflict() throws Exception {
 		when(taskRunService.execTask(anyLong()))
 				.thenThrow(new TaskAlreadyCompletedException("Task with reference id: x is already completed"));
 
-		// Act + Assert
-		Exception ex = assertThrows(ServletException.class, () -> mockMvc.perform(get("/api/v1/execute/1")));
-		assertThat(ex.getCause()).isInstanceOf(TaskAlreadyCompletedException.class);
-
-		/* note:
-		MockMvc has no real servlet container, so there's no container-level fallback to turn an
-		unhandled RuntimeException into a 500 response the way a real deployed server would.
-		With no @ControllerAdvice/@ExceptionHandler catching TaskAlreadyCompletedException, MockMvc
-		just rethrows it out of .perform(...), wrapped in a ServletException.
-		There's never an actual HTTP status produced here, so we can not do something like:
 		mockMvc
 				.perform(get("/api/v1/execute/1"))
-				.andExpect(status().is5xxServerError());
-		 */
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.detail").value("Task with reference id: x is already completed"));
+	}
+
+	@Test
+	void executeTask_missingTask_returnsNotFound() throws Exception {
+		when(taskRunService.execTask(anyLong()))
+				.thenThrow(new ResourceNotFoundException("Task not found with id: 1"));
+
+		mockMvc
+				.perform(get("/api/v1/execute/1"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.detail").value("Task not found with id: 1"));
+	}
+
+	@Test
+	void executeTask_invalidArgument_returnsBadRequest() throws Exception {
+		when(taskRunService.execTask(anyLong()))
+				.thenThrow(new IllegalArgumentException("Payload must contain valid JSON"));
+
+		mockMvc
+				.perform(get("/api/v1/execute/1"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.detail").value("Payload must contain valid JSON"));
 	}
 }
