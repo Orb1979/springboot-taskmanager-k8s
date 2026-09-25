@@ -19,7 +19,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,8 +74,8 @@ class TaskRunControllerTest {
 
 		// Act + Assert
 		mockMvc
-				.perform(get("/api/v1/execute/1"))
-				.andExpect(status().isCreated())
+				.perform(post("/api/v1/execute/1"))
+				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.id").value(1))
 				.andExpect(jsonPath("$.status").value("PENDING"));
 	}
@@ -86,7 +86,7 @@ class TaskRunControllerTest {
 				.thenThrow(new TaskAlreadyCompletedException("Task with reference id: x is already completed"));
 
 		mockMvc
-				.perform(get("/api/v1/execute/1"))
+				.perform(post("/api/v1/execute/1"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.detail").value("Task with reference id: x is already completed"));
 	}
@@ -97,7 +97,7 @@ class TaskRunControllerTest {
 				.thenThrow(new ResourceNotFoundException("Task not found with id: 1"));
 
 		mockMvc
-				.perform(get("/api/v1/execute/1"))
+				.perform(post("/api/v1/execute/1"))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.detail").value("Task not found with id: 1"));
 	}
@@ -108,7 +108,7 @@ class TaskRunControllerTest {
 				.thenThrow(new IllegalArgumentException("Payload must contain valid JSON"));
 
 		mockMvc
-				.perform(get("/api/v1/execute/1"))
+				.perform(post("/api/v1/execute/1"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.detail").value("Payload must contain valid JSON"));
 	}

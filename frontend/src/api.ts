@@ -66,7 +66,7 @@ export function updateTaskStatus(id: number, body: TaskStatusUpdate): Promise<Ta
 }
 
 export function executeTask(taskId: number): Promise<Task> {
-  return request<Task>(`/api/v1/execute/${taskId}`);
+  return request<Task>(`/api/v1/execute/${taskId}`, { method: "POST" });
 }
 
 export function cancelTask(taskId: number): Promise<void> {

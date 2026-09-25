@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.*;
 public class TaskRunController {
 	private final TaskRunService taskRunService;
 
-	@GetMapping("/{taskId}")
-	@ResponseStatus(HttpStatus.CREATED)
+	@PostMapping("/{taskId}")
+	@ResponseStatus(HttpStatus.ACCEPTED)
 	public TaskResponse execute(@PathVariable Long taskId) {
 		// execute a task, which we already created
 		return TaskResponse.from(taskRunService.execTask(taskId));
