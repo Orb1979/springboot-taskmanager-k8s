@@ -60,6 +60,10 @@ public class Task {
   @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private List<TaskHistory> history = new ArrayList<>();
 
+  @ManyToOne(fetch = FetchType.LAZY, optional = true)
+  @JoinColumn(name = "image_id")
+  private JobImage image;
+
   public void addHistory(TaskHistory history) {
     history.setTask(this);
     this.history.add(history);

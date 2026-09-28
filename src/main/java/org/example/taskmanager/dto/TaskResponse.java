@@ -18,7 +18,8 @@ public record TaskResponse(
     String payload,
     Priority priority,
     TaskStatus status,
-    List<TaskHistoryResponse> taskHistory
+    List<TaskHistoryResponse> taskHistory,
+    JobImageResponse image
 ) {
     public static TaskResponse from(Task task) {
         return new TaskResponse(
@@ -31,7 +32,8 @@ public record TaskResponse(
                 task.getPayload(),
                 task.getPriority(),
                 task.getStatus(),
-                task.getHistory().stream().map(TaskHistoryResponse::from).toList()
+                task.getHistory().stream().map(TaskHistoryResponse::from).toList(),
+                task.getImage() == null ? null : JobImageResponse.from(task.getImage())
         );
     }
 }

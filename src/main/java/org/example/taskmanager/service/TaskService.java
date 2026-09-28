@@ -3,11 +3,13 @@ package org.example.taskmanager.service;
 import lombok.RequiredArgsConstructor;
 import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.TaskHistory;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskInvalidException;
+import org.example.taskmanager.repo.JobImageRepository;
 import org.example.taskmanager.repo.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import java.util.UUID;
 @Transactional
 public class TaskService {
 	private final TaskRepository taskRepository;
+	private final JobImageRepository jobImageRepository;
 	private final ObjectMapper objectMapper;
 
 	public Optional<Task> getTaskByReferenceId(UUID referenceId){
@@ -50,6 +53,7 @@ public class TaskService {
             .priority(request.priority())
             .payload(normalizePayload(request.payload()))
             .status(TaskStatus.PENDING)
+            .image(resolveImage(request.imageId()))
             .build();
 		task.addHistory(TaskHistory.builder().status(TaskStatus.PENDING).build());
 		return taskRepository.save(task);
@@ -66,6 +70,9 @@ public class TaskService {
 		if (request.priority() != null) {
 			task.setPriority(request.priority());
 		}
+		if (request.imageId() != null) {
+			task.setImage(resolveImage(request.imageId()));
+		}
 		return taskRepository.save(task);
 	}
 
@@ -79,6 +86,14 @@ public class TaskService {
 			task.setFinishedAt(null);
 		}
 		return taskRepository.save(task);
+	}
+
+	private JobImage resolveImage(Long imageId) {
+		if (imageId == null) {
+			return null;
+		}
+		return jobImageRepository.findById(imageId)
+				       .orElseThrow(() -> new ResourceNotFoundException("Job image not found with id: " + imageId));
 	}
 
 	private String normalizePayload(String payload) {

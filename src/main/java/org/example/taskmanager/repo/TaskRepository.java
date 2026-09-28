@@ -24,10 +24,11 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 	you add DISTINCT yourself — @EntityGraph handles that correctly without you having to think about it
   */
 
-	@EntityGraph(attributePaths = "history")
+	// TODO we can probably remove image
+	@EntityGraph(attributePaths = {"history", "image"})
 	Optional<Task> findWithHistoryById(Long id);
 
-	@EntityGraph(attributePaths = "history")
+	@EntityGraph(attributePaths = {"history", "image"})
 	List<Task> findAllWithHistoryBy();
 
 	// similar result as findAllWithHistoryBy

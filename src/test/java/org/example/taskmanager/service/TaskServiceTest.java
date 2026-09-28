@@ -3,11 +3,13 @@ package org.example.taskmanager.service;
 
 import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskInvalidException;
+import org.example.taskmanager.repo.JobImageRepository;
 import org.example.taskmanager.repo.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,11 +33,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TaskServiceTest {
   @Mock private TaskRepository taskRepository;
+  @Mock private JobImageRepository jobImageRepository;
   @InjectMocks private TaskService taskService;
 
 	@BeforeEach
 	void setUp() {
-		taskService = new TaskService(taskRepository, new ObjectMapper());
+		taskService = new TaskService(taskRepository, jobImageRepository, new ObjectMapper());
 	}
 
   @Test
@@ -96,6 +99,29 @@ class TaskServiceTest {
 		assertEquals(req.priority(), result.getPriority());
 		assertThat(result.getHistory()).hasSize(1);
 		assertEquals(TaskStatus.PENDING, result.getHistory().getFirst().getStatus());
+	}
+
+	@Test
+	void createTask_withImage() {
+		JobImage image = JobImage.builder()
+				.id(5L)
+				.imageName("worker-counter:v2")
+				.build();
+		when(jobImageRepository.findById(5L)).thenReturn(Optional.of(image));
+		when(taskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		Task result = taskService.createTask(new TaskRequest("task1", "{}", Priority.HIGH, 5L));
+
+		assertThat(result.getImage()).isEqualTo(image);
+	}
+
+	@Test
+	void createTask_imageNotFound() {
+		when(jobImageRepository.findById(9999L)).thenReturn(Optional.empty());
+
+		assertThrows(ResourceNotFoundException.class,
+				() -> taskService.createTask(new TaskRequest("task1", "{}", Priority.HIGH, 9999L)));
+		verify(taskRepository, never()).save(any());
 	}
 
 	@Test
@@ -200,6 +226,22 @@ class TaskServiceTest {
 		TaskRequest request = new TaskRequest("name", null, null);
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class, () -> taskService.updateTask(9999L, request));
+	}
+
+	@Test
+	void updateTask_setsImage() {
+		JobImage image = JobImage.builder()
+				.id(5L)
+				.imageName("worker-counter:v2")
+				.build();
+		Task existing = Task.builder().id(1L).name("task").build();
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(jobImageRepository.findById(5L)).thenReturn(Optional.of(image));
+		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+		Task result = taskService.updateTask(1L, new TaskRequest(null, null, null, 5L));
+
+		assertThat(result.getImage()).isEqualTo(image);
 	}
 
 	@Test

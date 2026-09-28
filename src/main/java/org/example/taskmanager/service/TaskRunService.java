@@ -4,8 +4,10 @@ import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import lombok.extern.log4j.Log4j2;
 import org.example.taskmanager.dto.TaskHistoryRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.TaskStatus;
+import org.example.taskmanager.exception.TaskInvalidException;
 import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,20 +21,17 @@ public class TaskRunService {
 	private final TaskService taskService;
 	private final TaskHistoryService taskHistoryService;
   private final KubernetesService kubernetesService;
-  private final String workerImage;
   private final String kafkaBootstrapServers;
 
   public TaskRunService(
       TaskService taskService,
       TaskHistoryService taskHistoryService,
       KubernetesService kubernetesService,
-      @Value("${task.execution.worker-image}") String workerImage,
       @Value("${task.execution.kafka-bootstrap-servers}") String kafkaBootstrapServers
   ) {
     this.taskService = taskService;
     this.taskHistoryService = taskHistoryService;
     this.kubernetesService = kubernetesService;
-    this.workerImage = workerImage;
     this.kafkaBootstrapServers = kafkaBootstrapServers;
   }
 
@@ -57,6 +56,7 @@ public class TaskRunService {
               task.getReferenceId(), task.getStatus()));
     }
 
+    String workerImage = resolveWorkerImage(task);
     try {
       kubernetesService.createJob(task.getReferenceId().toString(), workerImage, withTaskEnv(task));
     } catch (Exception e) {
@@ -65,6 +65,15 @@ public class TaskRunService {
       throw e;
     }
     return taskService.getTask(task.getId());
+  }
+
+  private String resolveWorkerImage(Task task) {
+    JobImage image = task.getImage();
+    if (image == null || image.getImageName() == null || image.getImageName().isBlank()) {
+      throw new TaskInvalidException(
+          "Task with reference id: %s has no job image".formatted(task.getReferenceId()));
+    }
+    return image.getImageName();
   }
 
   private Function<ContainerBuilder, ContainerBuilder> withTaskEnv(Task task) {
