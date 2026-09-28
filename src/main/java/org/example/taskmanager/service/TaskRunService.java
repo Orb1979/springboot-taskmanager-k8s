@@ -46,11 +46,7 @@ public class TaskRunService {
         task.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
     taskHistoryService.createHistory(
         task.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
-    kubernetesService.deleteJobsByName(getJobName(task));
-  }
-
-  private String getJobName(Task task) {
-    return task.getName() + "-" + task.getReferenceId();
+    kubernetesService.deleteJobsByName(task.getReferenceId().toString());
   }
 
   private Task execTask(Task task) {
@@ -61,9 +57,8 @@ public class TaskRunService {
               task.getReferenceId(), task.getStatus()));
     }
 
-    String jobName = getJobName(task);
     try {
-      kubernetesService.createJob(jobName, workerImage, withTaskEnv(task));
+      kubernetesService.createJob(task.getReferenceId().toString(), workerImage, withTaskEnv(task));
     } catch (Exception e) {
       taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.FAILED, e.getMessage()));
       taskHistoryService.createHistory(task.getId(), new TaskHistoryRequest(TaskStatus.FAILED, e.getMessage()));

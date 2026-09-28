@@ -58,7 +58,7 @@ class TaskRunServiceTest {
 		Task result = taskRunService.execTask(1L);
 
 		// Assert
-		verify(kubernetesService).createJob(eq(task.getName() + "-" + task.getReferenceId()), anyString(), any());
+		verify(kubernetesService).createJob(eq(task.getReferenceId().toString()), anyString(), any());
 		verify(taskService, never()).updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.FAILED, null));
 		assertThat(result).isEqualTo(task);
 	}
@@ -114,7 +114,6 @@ class TaskRunServiceTest {
 	void cancelTask_taskId_exist() {
 		// Arrange
 		Task existing = pendingTask();
-		String jobName = existing.getName() + "-" + existing.getReferenceId();
 		when(taskService.getTask(existing.getId())).thenReturn(existing);
 
 		// Act
@@ -125,6 +124,6 @@ class TaskRunServiceTest {
 				existing.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
 		verify(taskHistoryService).createHistory(
 				existing.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
-		verify(kubernetesService).deleteJobsByName(jobName);
+		verify(kubernetesService).deleteJobsByName(existing.getReferenceId().toString());
 	}
 }
