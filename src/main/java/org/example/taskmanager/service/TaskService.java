@@ -7,7 +7,7 @@ import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.TaskHistory;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
-import org.example.taskmanager.exception.TaskAlreadyExistException;
+import org.example.taskmanager.exception.TaskInvalidException;
 import org.example.taskmanager.repo.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,9 +44,6 @@ public class TaskService {
 	}
 
 	public Task createTask(TaskRequest request) {
-		if (getTaskByReferenceId(request.referenceId()).isPresent()){
-			throw new TaskAlreadyExistException("Task already exist: " + request.referenceId());
-		}
     Task task =
         Task.builder()
             .name(request.name())
@@ -59,7 +56,7 @@ public class TaskService {
 	}
 
 	public Task updateTask(Long id, TaskRequest request) {
-		Task task = findTaskOrThrow(id);
+		Task task = getTask(id);
 		if (request.name() != null) {
 			task.setName(request.name());
 		}
@@ -73,10 +70,13 @@ public class TaskService {
 	}
 
 	public Task updateTaskStatus(Long id, TaskStatusUpdate update) {
-		Task task = findTaskOrThrow(id);
+		// we can update to any state, atm there is no allowed-transition check (not a state machine)
+		Task task = getTask(id);
 		task.setStatus(update.status());
 		if (isTerminal(update.status())) {
 			task.setFinishedAt(LocalDateTime.now());
+		} else {
+			task.setFinishedAt(null);
 		}
 		return taskRepository.save(task);
 	}
@@ -89,7 +89,7 @@ public class TaskService {
 			objectMapper.readTree(payload);
 			return payload;
 		} catch (JacksonException exception) {
-			throw new IllegalArgumentException("Payload must contain valid JSON", exception);
+			throw new TaskInvalidException("Payload must contain valid JSON", exception);
 		}
 	}
 

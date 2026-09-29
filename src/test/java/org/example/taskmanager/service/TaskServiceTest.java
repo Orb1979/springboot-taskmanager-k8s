@@ -7,7 +7,7 @@ import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
-import org.example.taskmanager.exception.TaskAlreadyExistException;
+import org.example.taskmanager.exception.TaskInvalidException;
 import org.example.taskmanager.repo.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -85,7 +86,6 @@ class TaskServiceTest {
 	void createTask() {
 		// Arrange
 		TaskRequest req = new TaskRequest("task1", "{}", Priority.HIGH);
-		when(taskRepository.findByReferenceId(any())).thenReturn(Optional.empty());
 		when(taskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     // Act
 		Task result = taskService.createTask(req);
@@ -94,12 +94,13 @@ class TaskServiceTest {
 		assertEquals(req.name(), result.getName());
 		assertEquals(req.payload(), result.getPayload());
 		assertEquals(req.priority(), result.getPriority());
+		assertThat(result.getHistory()).hasSize(1);
+		assertEquals(TaskStatus.PENDING, result.getHistory().getFirst().getStatus());
 	}
 
 	@Test
 	void createTask_with_empty_payload() {
 		// Arrange
-		when(taskRepository.findByReferenceId(any())).thenReturn(Optional.empty());
 		when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		// Act
 		Task result1 = taskService.createTask(new TaskRequest("task", "", Priority.HIGH));
@@ -114,39 +115,28 @@ class TaskServiceTest {
 	@Test
 	void createTask_with_invalidPayload_throwsException() {
 		// Arrange
-		when(taskRepository.findByReferenceId(any())).thenReturn(Optional.empty());
 		TaskRequest req = new TaskRequest("task", "not valid json", Priority.HIGH);
 		// Act + Assert
-		assertThrows(IllegalArgumentException.class,() -> taskService.createTask(req));
+		assertThrows(TaskInvalidException.class,() -> taskService.createTask(req));
 		verify(taskRepository, never()).save(any(Task.class));
 	}
-
-  @Test
-  void createTask_referenceId_already_exist() {
-		// Arrange
-	  UUID referenceId = UUID.randomUUID();
-	  TaskRequest taskrequest = new TaskRequest(referenceId, "name", "{\"k\":1}", Priority.HIGH);
-		when(taskRepository.findByReferenceId(referenceId)).thenReturn(Optional.of(new Task()));
-	  // Act + Assert
-		assertThrows(TaskAlreadyExistException.class, ()-> taskService.createTask(taskrequest));
-  }
 
 	@Test
 	void updateTask_onlyOverwritesNonNullFields() {
 		// Arrange
 		Task existing = Task.builder()
 				                .id(1L)
-				                .name("old name")
+				                .name("old")
 				                .payload("{}")
 				                .priority(Priority.LOW)
 				                .build();
-		when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-		TaskRequest request = new TaskRequest("new name", null, null);
+		TaskRequest request = new TaskRequest("new", null, null);
 		// Act
 		Task result = taskService.updateTask(1L, request);
 		// Assert
-		assertEquals("new name", result.getName());
+		assertEquals("new", result.getName());
 		assertEquals("{}", result.getPayload());
 		assertEquals(Priority.LOW, result.getPriority());
 	}
@@ -160,13 +150,13 @@ class TaskServiceTest {
 				                .payload("{}")
 				                .priority(Priority.LOW)
 				                .build();
-		when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-		TaskRequest request = new TaskRequest("new name", "{\"x\":1}", Priority.HIGH);
+		TaskRequest request = new TaskRequest("new", "{\"x\":1}", Priority.HIGH);
 		// Act
 		Task result = taskService.updateTask(1L, request);
 		// Assert
-		assertEquals("new name", result.getName());
+		assertEquals("new", result.getName());
 		assertEquals("{\"x\":1}", result.getPayload());
 		assertEquals(Priority.HIGH, result.getPriority());
 	}
@@ -178,7 +168,7 @@ class TaskServiceTest {
 				                .id(1L)
 				                .payload("{}")
 				                .build();
-		when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		// Act
 		Task result = taskService.updateTask(1L, new TaskRequest("task", "", Priority.HIGH));
@@ -194,10 +184,10 @@ class TaskServiceTest {
 				                .id(1L)
 				                .payload("{}")
 				                .build();
-		when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		// Act + Assert
 		assertThrows(
-				IllegalArgumentException.class,
+				TaskInvalidException.class,
 				() -> taskService.updateTask(1L, new TaskRequest("task", "not valid json", Priority.HIGH)));
 		assertThat(existing.getPayload()).isEqualTo("{}");
 		verify(taskRepository, never()).save(any(Task.class));
@@ -206,7 +196,7 @@ class TaskServiceTest {
 	@Test
 	void updateTask_notFound() {
 		// Arrange
-		when(taskRepository.findById(9999L)).thenReturn(Optional.empty());
+		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
 		TaskRequest request = new TaskRequest("name", null, null);
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class, () -> taskService.updateTask(9999L, request));
@@ -216,7 +206,7 @@ class TaskServiceTest {
 	void updateTaskStatus_setsStatus() {
 		// Arrange
 		Task existing = Task.builder().id(1L).status(TaskStatus.PENDING).build();
-		when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		// Act
 		taskService.updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.RUNNING));
 		// Assert
@@ -228,7 +218,7 @@ class TaskServiceTest {
 	void updateTaskStatus_setsFinishedAt_whenTerminal() {
 		// Arrange
 		Task existing = Task.builder().id(1L).status(TaskStatus.RUNNING).build();
-		when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		// Act
 		taskService.updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.COMPLETED));
 		// Assert
@@ -239,10 +229,25 @@ class TaskServiceTest {
 	@Test
 	void updateTaskStatus_notFound() {
 		// Arrange
-		when(taskRepository.findById(9999L)).thenReturn(Optional.empty());
+		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class,
 				() -> taskService.updateTaskStatus(9999L, new TaskStatusUpdate(TaskStatus.RUNNING)));
+	}
+
+	@Test
+	void updateTaskStatus_clearsFinishedAt_whenNonTerminal() {
+		Task existing = Task.builder()
+				                .id(1L)
+				                .status(TaskStatus.CANCELED)
+				                .finishedAt(LocalDateTime.now())
+				                .build();
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+
+		taskService.updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.PENDING));
+
+		assertEquals(TaskStatus.PENDING, existing.getStatus());
+		assertThat(existing.getFinishedAt()).isNull();
 	}
 
 	@Test
