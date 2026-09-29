@@ -7,7 +7,6 @@ import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.TaskHistory;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
-import org.example.taskmanager.exception.TaskAlreadyExistException;
 import org.example.taskmanager.repo.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,9 +43,6 @@ public class TaskService {
 	}
 
 	public Task createTask(TaskRequest request) {
-		if (getTaskByReferenceId(request.referenceId()).isPresent()){
-			throw new TaskAlreadyExistException("Task already exist: " + request.referenceId());
-		}
     Task task =
         Task.builder()
             .name(request.name())

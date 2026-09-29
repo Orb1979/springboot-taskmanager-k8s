@@ -2,7 +2,6 @@ package org.example.taskmanager.web;
 
 
 import lombok.RequiredArgsConstructor;
-import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskResponse;
 import org.example.taskmanager.service.TaskRunService;
 import org.springframework.http.HttpStatus;
@@ -26,13 +25,6 @@ public class TaskRunController {
 	public void cancel(@PathVariable Long taskId) {
 		// cancel a task, which we already created
 		taskRunService.cancelTask(taskId);
-	}
-
-	@PostMapping()
-	@ResponseStatus(HttpStatus.CREATED)
-	public TaskResponse createAndExecute(@RequestBody TaskRequest request) {
-		// create a task from the request and directly execute it
-		return TaskResponse.from(taskRunService.createAndExecuteTask(request));
 	}
 }
 

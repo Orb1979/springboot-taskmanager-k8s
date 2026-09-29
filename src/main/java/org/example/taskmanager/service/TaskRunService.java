@@ -3,17 +3,14 @@ package org.example.taskmanager.service;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import lombok.extern.log4j.Log4j2;
 import org.example.taskmanager.dto.TaskHistoryRequest;
-import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.TaskStatus;
-import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskAlreadyCompletedException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Function;
 
 @Log4j2
@@ -39,10 +36,6 @@ public class TaskRunService {
     this.kafkaBootstrapServers = kafkaBootstrapServers;
   }
 
-  public Task createAndExecuteTask(TaskRequest taskRequest) {
-    return execTask(resolveTask(taskRequest));
-  }
-
   public Task execTask(Long taskId) {
     return execTask(taskService.getTask(taskId));
   }
@@ -54,16 +47,6 @@ public class TaskRunService {
     taskHistoryService.createHistory(
         task.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
     kubernetesService.deleteJobsByName(getJobName(task));
-  }
-
-  private Task resolveTask(TaskRequest request) {
-    UUID referenceId = request.referenceId();
-    if (referenceId == null) {
-      return taskService.createTask(request);
-    }
-    return taskService.getTaskByReferenceId(referenceId)
-               .orElseThrow(() -> new ResourceNotFoundException(
-                   "Task with reference id: %s not found".formatted(referenceId)));
   }
 
   private String getJobName(Task task) {

@@ -1,10 +1,8 @@
 package org.example.taskmanager.service;
 
 import org.example.taskmanager.dto.TaskHistoryRequest;
-import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
 import org.example.taskmanager.entity.Task;
-import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskAlreadyCompletedException;
@@ -14,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,53 +93,7 @@ class TaskRunServiceTest {
 	}
 
 	@Test
-	void createTaskAndExecute_Request_has_no_referenceIdTask() {
-		// Arrange
-		TaskRequest request = new TaskRequest("task1", "{}", Priority.HIGH);
-		Task created = pendingTask();;
-		when(taskService.createTask(request)).thenReturn(created);
-		when(taskService.getTask(created.getId())).thenReturn(created);
-
-		// Act
-		Task result = taskRunService.createAndExecuteTask(request);
-
-		// Assert
-		verify(taskService).createTask(request);
-		verify(kubernetesService).createJob(anyString(), anyString(), any());
-		assertThat(result).isEqualTo(created);
-	}
-
-	@Test
-	void createTaskAndExecute__request_has_referenceId_which_existsTask() {
-		// Arrange
-		UUID refId = UUID.randomUUID();
-		TaskRequest request = new TaskRequest(refId, "task1", "{}", Priority.HIGH);
-		Task existing = pendingTask();
-		when(taskService.getTaskByReferenceId(refId)).thenReturn(Optional.of(existing));
-		when(taskService.getTask(existing.getId())).thenReturn(existing);
-
-		// Act
-		taskRunService.createAndExecuteTask(request);
-
-		// Assert
-		verify(taskService, never()).createTask(any());
-		verify(kubernetesService).createJob(anyString(), anyString(), any());
-	}
-
-	@Test
-	void createTaskAndExecute__request_has_referenceId_which_not_existsTask() {
-		// Arrange
-		UUID notExistingReferenceId = UUID.randomUUID();
-		TaskRequest request = new TaskRequest(notExistingReferenceId, "task1", "{}", Priority.HIGH);
-		when(taskService.getTaskByReferenceId(request.referenceId())).thenReturn(Optional.empty());
-
-		// Act + Assert
-		assertThrows(ResourceNotFoundException.class, () -> taskRunService.createAndExecuteTask(request));
-	}
-
-
-	@Test
-	void cancelTaskAndExecute_taskRequest_has_no_referenceId() {
+	void cancelTask_taskId_notFound() {
 		// Arrange
 		Long notExistingTaskId = 9999L;
 		when(taskService.getTask(notExistingTaskId))
@@ -154,7 +105,7 @@ class TaskRunServiceTest {
 	}
 
 	@Test
-	void cancelTaskAndExecute_taskRequest_has_referenceId_which_exists() {
+	void cancelTask_taskId_exist() {
 		// Arrange
 		Task existing = pendingTask();
 		String jobName = existing.getName() + "-" + existing.getReferenceId();

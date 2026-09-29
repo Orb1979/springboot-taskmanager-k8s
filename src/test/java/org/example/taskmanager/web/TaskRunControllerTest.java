@@ -1,17 +1,15 @@
 package org.example.taskmanager.web;
 
 import jakarta.servlet.ServletException;
-import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.TaskAlreadyCompletedException;
-import org.example.taskmanager.service.TaskRunService;
 import org.example.taskmanager.service.KubernetesService;
+import org.example.taskmanager.service.TaskRunService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -20,11 +18,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,24 +65,6 @@ class TaskRunControllerTest {
 				       .priority(Priority.HIGH)
 				       .build();
 	}
-
-	@Test
-	void createAndExecuteTask() throws Exception {
-		// Arrange
-		TaskRequest request = new TaskRequest("some-task-name", "{}", Priority.HIGH);
-		Task task = sampleTask(TaskStatus.PENDING);
-		when(taskRunService.createAndExecuteTask(any())).thenReturn(task);
-
-		// Act + Assert
-		mockMvc
-				.perform(post("/api/v1/execute")
-						         .contentType(MediaType.APPLICATION_JSON)
-						         .content(objectMapper.writeValueAsString(request)))
-				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.name").value("some-task-name"))
-				.andExpect(jsonPath("$.status").value("PENDING"));
-	}
-
 
 	@Test
 	void executeExistingTask() throws Exception {
