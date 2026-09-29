@@ -1,6 +1,12 @@
 import type { ColumnDef, RowData, SortingState } from "@tanstack/react-table";
 import { useAppTable } from "../table";
 
+const DEFAULT_COLUMN_MIN_WIDTH = "5.5rem";
+
+function columnMinWidth(minSize: number | undefined): string {
+  return minSize == null ? DEFAULT_COLUMN_MIN_WIDTH : `${minSize}px`;
+}
+
 interface DataTableProps<TData extends RowData> {
   data: TData[];
   columns: Array<ColumnDef<any, TData, any>>;
@@ -50,7 +56,7 @@ export function DataTable<TData extends RowData>({
                   const canSort = header.column.getCanSort();
                   const sorted = header.column.getIsSorted();
                   return (
-                    <th key={header.id}>
+                    <th key={header.id} style={{ minWidth: columnMinWidth(header.column.columnDef.minSize) }}>
                       {canSort ? (
                         <button
                           type="button"
@@ -82,7 +88,7 @@ export function DataTable<TData extends RowData>({
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id}>
                   {row.getAllCells().map((cell) => (
-                    <td key={cell.id}>
+                    <td key={cell.id} style={{ minWidth: columnMinWidth(cell.column.columnDef.minSize) }}>
                       <table.FlexRender cell={cell} />
                     </td>
                   ))}
