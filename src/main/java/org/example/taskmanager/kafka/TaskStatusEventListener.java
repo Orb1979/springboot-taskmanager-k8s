@@ -6,7 +6,6 @@ import org.example.taskmanager.dto.TaskHistoryRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.TaskStatus;
-import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.service.TaskHistoryService;
 import org.example.taskmanager.service.TaskService;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -29,9 +28,11 @@ public class TaskStatusEventListener {
 			return;
 		}
 
-		Task task = taskService.getTaskByReferenceId(event.taskReferenceId())
-				.orElseThrow(() -> new ResourceNotFoundException(
-						"Task not found with reference ID " + event.taskReferenceId()));
+		Task task = taskService.getTaskByReferenceId(event.taskReferenceId()).orElse(null);
+		if (task == null) {
+			log.warn("task-status-events: task not found, with reference ID {}, ignoring", event.taskReferenceId());
+			return;
+		}
 
 		if (task.getStatus().equals(TaskStatus.CANCELED)) {
 			log.warn("task-status-events: event for for cancelled task, ignoring event with status  {} ", event.status());
