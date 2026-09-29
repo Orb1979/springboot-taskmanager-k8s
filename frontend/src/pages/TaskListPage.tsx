@@ -147,40 +147,40 @@ export function TaskListPage() {
     () =>
       columnHelper.columns([
 
-        columnHelper.accessor("name", { header: "Name", minSize: 96 }),
-        columnHelper.accessor("referenceId", { header: "Reference ID", minSize: 120 }),
+        columnHelper.accessor("name", { header: "Name", minSize: 100 }),
+        columnHelper.accessor("referenceId", { header: "Reference ID", minSize: 100 }),
         columnHelper.accessor((task) => task.image?.imageName ?? "", {
           id: "imageName",
           header: "Image",
-          minSize: 96,
+          minSize: 100,
           cell: ({ getValue }) => getValue() || "—",
         }),
 
         columnHelper.accessor("createdAt", {
           header: "Created",
-          minSize: 88,
+          minSize: 90,
           cell: ({ getValue }) => formatWhen(getValue()),
         }),
         columnHelper.accessor("updatedAt", {
           header: "Updated",
-          minSize: 88,
+          minSize: 90,
           cell: ({ getValue }) => formatWhen(getValue()),
         }),
         columnHelper.accessor("finishedAt", {
           header: "Finished",
-          minSize: 88,
+          minSize: 90,
           cell: ({ getValue }) => formatWhen(getValue()),
         }),
-        columnHelper.accessor("priority", { header: "Priority", minSize: 72 }),
+        columnHelper.accessor("priority", { header: "Priority", minSize: 80 }),
         columnHelper.accessor("status", {
           header: "Status",
-          minSize: 88,
+          minSize: 100,
           cell: ({ getValue }) => <StatusBadge status={getValue()} />,
         }),
         columnHelper.display({
           id: "actions",
           header: "Actions",
-          minSize: 220,
+          minSize: 300,
           enableSorting: false,
           enableGlobalFilter: false,
           cell: ({ row }) => {
