@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getTask, getTaskHistory, updateTask, updateTaskStatus } from "../api";
+import { getJobImages, getTask, getTaskHistory, updateTask, updateTaskStatus } from "../api";
 import { StatusBadge } from "../components/StatusBadge";
 import { formatWhen, messageOf } from "../format";
-import type { Priority, Task, TaskHistory, TaskStatus } from "../types";
+import type { JobImage, Priority, Task, TaskHistory, TaskStatus } from "../types";
 
 const PRIORITIES: Priority[] = ["HIGH", "MEDIUM", "LOW"];
 const STATUSES: TaskStatus[] = ["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELED"];
@@ -14,6 +14,7 @@ interface TaskForm {
   priority: Priority;
   status: TaskStatus;
   errorMessage: string;
+  imageId: string;
 }
 
 function formFromTask(task: Task): TaskForm {
@@ -23,6 +24,7 @@ function formFromTask(task: Task): TaskForm {
     priority: task.priority,
     status: task.status,
     errorMessage: "",
+    imageId: task.image ? String(task.image.id) : "",
   };
 }
 
@@ -35,11 +37,17 @@ export function TaskDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jobImages, setJobImages] = useState<JobImage[]>([]);
 
   async function load(idToLoad: number) {
-    const [nextTask, nextHistory] = await Promise.all([getTask(idToLoad), getTaskHistory(idToLoad)]);
+    const [nextTask, nextHistory, nextImages] = await Promise.all([
+      getTask(idToLoad),
+      getTaskHistory(idToLoad),
+      getJobImages(),
+    ]);
     setTask(nextTask);
     setHistory(nextHistory);
+    setJobImages(nextImages);
     setForm(formFromTask(nextTask));
   }
 
@@ -78,8 +86,12 @@ export function TaskDetailPage() {
       return;
     }
 
+    const currentImageId = task.image ? String(task.image.id) : "";
     const fieldsChanged =
-      name !== task.name || form.payload !== (task.payload ?? "") || form.priority !== task.priority;
+      name !== task.name ||
+      form.payload !== (task.payload ?? "") ||
+      form.priority !== task.priority ||
+      form.imageId !== currentImageId;
     const statusChanged = form.status !== task.status || form.errorMessage.trim() !== "";
 
     if (!fieldsChanged && !statusChanged) {
@@ -94,6 +106,7 @@ export function TaskDetailPage() {
           name,
           payload: form.payload,
           priority: form.priority,
+          imageId: form.imageId ? Number(form.imageId) : null,
         });
       }
       if (statusChanged) {
@@ -174,6 +187,20 @@ export function TaskDetailPage() {
           {PRIORITIES.map((priority) => (
             <option key={priority} value={priority}>
               {priority}
+            </option>
+          ))}
+        </select>
+
+        <label htmlFor="edit-image">Job image</label>
+        <select
+          id="edit-image"
+          value={form.imageId}
+          onChange={(event) => setForm({ ...form, imageId: event.target.value })}
+        >
+          <option value="">None</option>
+          {jobImages.map((image) => (
+            <option key={image.id} value={image.id}>
+              {image.imageName}
             </option>
           ))}
         </select>

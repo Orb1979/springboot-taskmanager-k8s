@@ -10,6 +10,17 @@ export interface TaskHistory {
   errorMessage: string | null;
 }
 
+export interface JobImage {
+  id: number;
+  imageName: string;
+  description: string | null;
+}
+
+export interface JobImageRequest {
+  imageName: string;
+  description?: string | null;
+}
+
 export interface Task {
   id: number;
   referenceId: string;
@@ -21,12 +32,14 @@ export interface Task {
   priority: Priority;
   status: TaskStatus;
   taskHistory: TaskHistory[];
+  image: JobImage | null;
 }
 
 export interface TaskRequest {
   name: string;
   payload: string;
   priority: Priority;
+  imageId?: number | null;
 }
 
 export interface TaskStatusUpdate {

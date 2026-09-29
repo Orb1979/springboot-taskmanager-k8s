@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { cancelTask, createTask, deleteTask, executeTask, getTasks } from "../api";
+import { cancelTask, createTask, deleteTask, executeTask, getJobImages, getTasks } from "../api";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { formatWhen, messageOf } from "../format";
 import { createAppColumnHelper } from "../table";
-import type { Priority, Task } from "../types";
+import type { JobImage, Priority, Task } from "../types";
 
 const PRIORITIES: Priority[] = ["HIGH", "MEDIUM", "LOW"];
 const columnHelper = createAppColumnHelper<Task>();
@@ -22,7 +22,9 @@ export function TaskListPage() {
     name: "",
     payload: "",
     priority: "MEDIUM" as Priority,
+    imageId: "",
   });
+  const [jobImages, setJobImages] = useState<JobImage[]>([]);
 
   async function loadTasks() {
     setTasks(await getTasks());
@@ -56,6 +58,13 @@ export function TaskListPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!createOpen) return;
+    getJobImages()
+      .then(setJobImages)
+      .catch((err: unknown) => setCreateError(messageOf(err)));
+  }, [createOpen]);
+
   function openCreate() {
     setCreateError(null);
     setCreateOpen(true);
@@ -65,7 +74,7 @@ export function TaskListPage() {
     if (creating) return;
     setCreateOpen(false);
     setCreateError(null);
-    setCreateForm({ name: "", payload: "", priority: "MEDIUM" });
+    setCreateForm({ name: "", payload: "", priority: "MEDIUM", imageId: "" });
   }
 
   async function onCreate(event: FormEvent) {
@@ -82,8 +91,9 @@ export function TaskListPage() {
         name,
         payload: createForm.payload,
         priority: createForm.priority,
+        imageId: createForm.imageId ? Number(createForm.imageId) : null,
       });
-      setCreateForm({ name: "", payload: "", priority: "MEDIUM" });
+      setCreateForm({ name: "", payload: "", priority: "MEDIUM", imageId: "" });
       setCreateOpen(false);
       await loadTasks();
     } catch (err: unknown) {
@@ -136,28 +146,41 @@ export function TaskListPage() {
   const columns = useMemo(
     () =>
       columnHelper.columns([
-        columnHelper.accessor("referenceId", { header: "Reference ID" }),
-        columnHelper.accessor("name", { header: "Name" }),
+
+        columnHelper.accessor("name", { header: "Name", minSize: 96 }),
+        columnHelper.accessor("referenceId", { header: "Reference ID", minSize: 120 }),
+        columnHelper.accessor((task) => task.image?.imageName ?? "", {
+          id: "imageName",
+          header: "Image",
+          minSize: 96,
+          cell: ({ getValue }) => getValue() || "—",
+        }),
+
         columnHelper.accessor("createdAt", {
           header: "Created",
+          minSize: 88,
           cell: ({ getValue }) => formatWhen(getValue()),
         }),
         columnHelper.accessor("updatedAt", {
           header: "Updated",
+          minSize: 88,
           cell: ({ getValue }) => formatWhen(getValue()),
         }),
         columnHelper.accessor("finishedAt", {
           header: "Finished",
+          minSize: 88,
           cell: ({ getValue }) => formatWhen(getValue()),
         }),
-        columnHelper.accessor("priority", { header: "Priority" }),
+        columnHelper.accessor("priority", { header: "Priority", minSize: 72 }),
         columnHelper.accessor("status", {
           header: "Status",
+          minSize: 88,
           cell: ({ getValue }) => <StatusBadge status={getValue()} />,
         }),
         columnHelper.display({
           id: "actions",
           header: "Actions",
+          minSize: 220,
           enableSorting: false,
           enableGlobalFilter: false,
           cell: ({ row }) => {
@@ -243,6 +266,20 @@ export function TaskListPage() {
                 {PRIORITIES.map((priority) => (
                   <option key={priority} value={priority}>
                     {priority}
+                  </option>
+                ))}
+              </select>
+
+              <label htmlFor="create-image">Job image</label>
+              <select
+                id="create-image"
+                value={createForm.imageId}
+                onChange={(event) => setCreateForm({ ...createForm, imageId: event.target.value })}
+              >
+                <option value="">None</option>
+                {jobImages.map((image) => (
+                  <option key={image.id} value={image.id}>
+                    {image.imageName}
                   </option>
                 ))}
               </select>
