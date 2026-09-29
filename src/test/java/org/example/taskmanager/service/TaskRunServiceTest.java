@@ -2,9 +2,11 @@ package org.example.taskmanager.service;
 
 import org.example.taskmanager.dto.TaskHistoryRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
+import org.example.taskmanager.exception.TaskInvalidException;
 import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,13 +32,8 @@ class TaskRunServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		// Constructed manually instead of relying on @InjectMocks — @Value("${task.execution.worker-image}")
-		// is a Spring-only mechanism, and there's no Spring context here, so it would resolve to null,
-		// which breaks anyString() matchers in the verify() calls below (anyString() rejects null).
-		// it does not really matter because all the dependencies of executionService are mocked,
-		// so it would not start e.g a real kubernetes job
 		taskRunService = new TaskRunService(
-				taskService, taskHistoryService, kubernetesService, "worker-counter:v1", "192.168.5.15:9093");
+				taskService, taskHistoryService, kubernetesService, "192.168.5.15:9093");
 	}
 
 	private Task pendingTask() {
@@ -45,22 +42,30 @@ class TaskRunServiceTest {
 				       .referenceId(UUID.randomUUID())
 				       .name("task1")
 				       .status(TaskStatus.PENDING)
+				       .image(JobImage.builder().id(1L).imageName("worker-counter:v2").build())
 				       .build();
 	}
 
 	@Test
 	void execTask_success() {
-		// Arrange
 		Task task = pendingTask();
 		when(taskService.getTask(1L)).thenReturn(task);
 
-		// Act
 		Task result = taskRunService.execTask(1L);
 
-		// Assert
-		verify(kubernetesService).createJob(eq(task.getName() + "-" + task.getReferenceId()), anyString(), any());
+		verify(kubernetesService).createJob(eq(task.getReferenceId().toString()), eq("worker-counter:v2"), any());
 		verify(taskService, never()).updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.FAILED, null));
 		assertThat(result).isEqualTo(task);
+	}
+
+	@Test
+	void execTask_missingImage() {
+		Task task = pendingTask();
+		task.setImage(null);
+		when(taskService.getTask(1L)).thenReturn(task);
+
+		assertThrows(TaskInvalidException.class, () -> taskRunService.execTask(1L));
+		verify(kubernetesService, never()).createJob(anyString(), anyString(), any());
 	}
 
 	@ParameterizedTest
@@ -69,12 +74,10 @@ class TaskRunServiceTest {
 			names = {"COMPLETED", "FAILED", "RUNNING", "CANCELED"}
 	)
 	void execTask_is_not_startable(TaskStatus status) {
-		// Arrange
 		Task task = pendingTask();
 		task.setStatus(status);
 		when(taskService.getTask(1L)).thenReturn(task);
 
-		// Act + Assert
 		assertThrows(TaskNonStartableStateException.class, () -> taskRunService.execTask(1L));
 		verify(kubernetesService, never()).createJob(anyString(), anyString(), any());
 		verify(taskService, never()).updateTaskStatus(any(), any());
@@ -83,13 +86,11 @@ class TaskRunServiceTest {
 
 	@Test
 	void execTask_fail() {
-		// Arrange
-		Task task = pendingTask();;
+		Task task = pendingTask();
 		when(taskService.getTask(1L)).thenReturn(task);
 		doThrow(new RuntimeException("k8s down"))
 				.when(kubernetesService).createJob(anyString(), anyString(), any());
 
-		// Act + Assert
 		RuntimeException ex = assertThrows(RuntimeException.class, () -> taskRunService.execTask(1L));
 		assertThat(ex.getMessage()).isEqualTo("k8s down");
 
@@ -100,31 +101,25 @@ class TaskRunServiceTest {
 
 	@Test
 	void cancelTask_taskId_notFound() {
-		// Arrange
 		Long notExistingTaskId = 9999L;
 		when(taskService.getTask(notExistingTaskId))
 				.thenThrow(new ResourceNotFoundException("Task not found with id: " + notExistingTaskId));
 
-		// Act + Assert
 		assertThrows(ResourceNotFoundException.class, () -> taskRunService.cancelTask(notExistingTaskId));
 		verify(kubernetesService, never()).deleteJobsByName(anyString());
 	}
 
 	@Test
 	void cancelTask_taskId_exist() {
-		// Arrange
 		Task existing = pendingTask();
-		String jobName = existing.getName() + "-" + existing.getReferenceId();
 		when(taskService.getTask(existing.getId())).thenReturn(existing);
 
-		// Act
 		taskRunService.cancelTask(existing.getId());
 
-		// Assert
+		verify(kubernetesService).deleteJobsByName(existing.getReferenceId().toString());
 		verify(taskService).updateTaskStatus(
 				existing.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
 		verify(taskHistoryService).createHistory(
 				existing.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
-		verify(kubernetesService).deleteJobsByName(jobName);
 	}
 }

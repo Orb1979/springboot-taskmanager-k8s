@@ -3,11 +3,13 @@ package org.example.taskmanager.service;
 import lombok.RequiredArgsConstructor;
 import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.TaskHistory;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskInvalidException;
+import org.example.taskmanager.repo.JobImageRepository;
 import org.example.taskmanager.repo.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import java.util.UUID;
 @Transactional
 public class TaskService {
 	private final TaskRepository taskRepository;
+	private final JobImageRepository jobImageRepository;
 	private final ObjectMapper objectMapper;
 
 	public Optional<Task> getTaskByReferenceId(UUID referenceId){
@@ -32,24 +35,23 @@ public class TaskService {
 
 	@Transactional(readOnly = true)
 	public Task getTask(Long id) {
-		// A plain findById leaves history as an uninitialized proxy — fine inside the transaction, broken once it's over.
 		return taskRepository.findWithHistoryById(id)
 				       .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
 	}
 
 	@Transactional(readOnly = true)
 	public List<Task> getTasks() {
-		// A plain findAll leaves history as an uninitialized proxy — fine inside the transaction, broken once it's over.
 		return taskRepository.findAllWithHistoryBy();
 	}
 
 	public Task createTask(TaskRequest request) {
     Task task =
         Task.builder()
-            .name(request.name())
+            .name(normalizeName(request.name()))
             .priority(request.priority())
             .payload(normalizePayload(request.payload()))
             .status(TaskStatus.PENDING)
+            .image(resolveImage(request.imageId()))
             .build();
 		task.addHistory(TaskHistory.builder().status(TaskStatus.PENDING).build());
 		return taskRepository.save(task);
@@ -58,13 +60,16 @@ public class TaskService {
 	public Task updateTask(Long id, TaskRequest request) {
 		Task task = getTask(id);
 		if (request.name() != null) {
-			task.setName(request.name());
+			task.setName(normalizeName(request.name()));
 		}
 		if (request.payload() != null) {
 			task.setPayload(normalizePayload(request.payload()));
 		}
 		if (request.priority() != null) {
 			task.setPriority(request.priority());
+		}
+		if (request.imageId() != null) {
+			task.setImage(resolveImage(request.imageId()));
 		}
 		return taskRepository.save(task);
 	}
@@ -79,6 +84,21 @@ public class TaskService {
 			task.setFinishedAt(null);
 		}
 		return taskRepository.save(task);
+	}
+
+	private JobImage resolveImage(Long imageId) {
+		if (imageId == null) {
+			return null;
+		}
+		return jobImageRepository.findById(imageId)
+				       .orElseThrow(() -> new ResourceNotFoundException("Job image not found with id: " + imageId));
+	}
+
+	private String normalizeName(String name) {
+		if (name == null) {
+			throw new TaskInvalidException("Task name must not be null");
+		}
+		return name.trim();
 	}
 
 	private String normalizePayload(String payload) {

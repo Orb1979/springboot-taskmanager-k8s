@@ -145,5 +145,4 @@ Key connections:
 PostgreSQL is often hosted outside the Kubernetes cluster, usually as a managed database service. 
 The Spring Boot app connects to its private hostname over the network. 
 This keeps database storage, backups, and upgrades separate from the app cluster.
-
 ```

@@ -1,11 +1,14 @@
 package org.example.taskmanager;
 
+import org.example.taskmanager.dto.JobImageRequest;
 import org.example.taskmanager.dto.TaskHistoryRequest;
 import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
+import org.example.taskmanager.service.JobImageService;
 import org.example.taskmanager.service.TaskRunService;
 import org.example.taskmanager.service.KubernetesService;
 import org.example.taskmanager.service.TaskHistoryService;
@@ -37,18 +40,24 @@ class TaskExecutionIntegrationTest {
   @Autowired private TaskRunService taskRunService;
   @Autowired private TaskService taskService;
   @Autowired private TaskHistoryService taskHistoryService;
+  @Autowired private JobImageService jobImageService;
   @MockitoBean private KubernetesService kubernetesService;
+
+  private TaskRequest request(String name) {
+    JobImage image = jobImageService.createJobImage(new JobImageRequest("worker-counter:" + java.util.UUID.randomUUID()));
+    return new TaskRequest(name, "{}", Priority.HIGH, image.getId());
+  }
 
   @Test
   void createPendingTask() {
-    TaskRequest request = new TaskRequest("pending-task", "{}", Priority.HIGH);
+    TaskRequest request = request("pending-task");
 	  Task task = taskService.createTask(request);
 	  taskRunService.execTask(task.getId());
   }
 
   @Test
   void createAndCompleteTask() {
-    TaskRequest request = new TaskRequest("completed-task", "{}", Priority.HIGH);
+    TaskRequest request = request("completed-task");
 	  Task task = taskService.createTask(request);
 	  Task result = taskRunService.execTask(task.getId());
     taskService.updateTaskStatus(result.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
@@ -57,7 +66,7 @@ class TaskExecutionIntegrationTest {
   @Test
   void createAndFailTask() {
     // Arrange
-    TaskRequest request = new TaskRequest("failed-task", "{}", Priority.HIGH);
+    TaskRequest request = request("failed-task");
     doThrow(new RuntimeException("k8s down")).when(kubernetesService)
         .createJob(anyString(), anyString(), any());
 
@@ -73,7 +82,7 @@ class TaskExecutionIntegrationTest {
   @Test
   void executeFailedTask_again_reExecutesSuccessfully() {
     // Arrange
-    TaskRequest request = new TaskRequest("task-first-attempt", "{}", Priority.HIGH);
+    TaskRequest request = request("task-first-attempt");
 		Task task = taskService.createTask(request);
 
 		// run first time, it fails (updateTaskStatus would normally be called by kafka event)

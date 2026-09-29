@@ -13,7 +13,7 @@
   --shadow: 0 1px 2px rgba(28, 36, 48, 0.06);
   --radius: 10px;
   --label: 9.5rem;
-  --page-width: 1400px;
+  --page-width: 1500px;
   --job-button: 9rem;
   font-family: "Segoe UI", system-ui, sans-serif;
   line-height: 1.45;
@@ -322,11 +322,12 @@ textarea {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .data-table {
   width: 100%;
+  table-layout: auto;
   border-collapse: collapse;
   font-size: 0.8rem;
 }
@@ -336,8 +337,10 @@ textarea {
   text-align: left;
   padding: 0.22rem 0.4rem;
   border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-  white-space: nowrap;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .data-table th {
@@ -354,6 +357,8 @@ textarea {
   border: 0;
   padding: 0;
   font-weight: 600;
+  white-space: normal;
+  text-align: left;
 }
 
 .th-sort:hover:not(:disabled) {
@@ -367,7 +372,8 @@ textarea {
 }
 
 .table-actions {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
 }
@@ -377,6 +383,11 @@ textarea {
   padding: 0.18rem 0.45rem;
   border-radius: 6px;
   font-size: 0.75rem;
+}
+
+.when-cell {
+  display: flex;
+  flex-direction: column;
 }
 
 .history {

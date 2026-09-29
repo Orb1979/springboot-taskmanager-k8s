@@ -3,11 +3,13 @@ package org.example.taskmanager.service;
 
 import org.example.taskmanager.dto.TaskRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.JobImage;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.exception.ResourceNotFoundException;
 import org.example.taskmanager.exception.TaskInvalidException;
+import org.example.taskmanager.repo.JobImageRepository;
 import org.example.taskmanager.repo.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,11 +33,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TaskServiceTest {
   @Mock private TaskRepository taskRepository;
+  @Mock private JobImageRepository jobImageRepository;
   @InjectMocks private TaskService taskService;
 
 	@BeforeEach
 	void setUp() {
-		taskService = new TaskService(taskRepository, new ObjectMapper());
+		taskService = new TaskService(taskRepository, jobImageRepository, new ObjectMapper());
 	}
 
   @Test
@@ -99,6 +102,41 @@ class TaskServiceTest {
 	}
 
 	@Test
+	void createTask_withImage() {
+		JobImage image = JobImage.builder()
+				.id(5L)
+				.imageName("worker-counter:v2")
+				.build();
+		when(jobImageRepository.findById(5L)).thenReturn(Optional.of(image));
+		when(taskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		Task result = taskService.createTask(new TaskRequest("task1", "{}", Priority.HIGH, 5L));
+
+		assertThat(result.getImage()).isEqualTo(image);
+	}
+
+	@Test
+	void createTask_imageNotFound() {
+		when(jobImageRepository.findById(9999L)).thenReturn(Optional.empty());
+
+		assertThrows(ResourceNotFoundException.class,
+				() -> taskService.createTask(new TaskRequest("task1", "{}", Priority.HIGH, 9999L)));
+		verify(taskRepository, never()).save(any());
+	}
+
+	@Test
+	void createTask_normalizesName_throwException_on_name_is_null() {
+		assertThrows(TaskInvalidException.class, ()-> taskService.createTask(new TaskRequest(null, "{}", Priority.HIGH)));
+	}
+
+	@Test
+	void createTask_normalizesName_trim() {
+		when(taskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+		Task result = taskService.createTask(new TaskRequest(" trimmed ", "{}", Priority.HIGH));
+		assertEquals("trimmed", result.getName());
+	}
+
+	@Test
 	void createTask_with_empty_payload() {
 		// Arrange
 		when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -130,6 +168,7 @@ class TaskServiceTest {
 				                .payload("{}")
 				                .priority(Priority.LOW)
 				                .build();
+
 		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 		TaskRequest request = new TaskRequest("new", null, null);
@@ -203,6 +242,22 @@ class TaskServiceTest {
 	}
 
 	@Test
+	void updateTask_setsImage() {
+		JobImage image = JobImage.builder()
+				.id(5L)
+				.imageName("worker-counter:v2")
+				.build();
+		Task existing = Task.builder().id(1L).name("task").build();
+		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(jobImageRepository.findById(5L)).thenReturn(Optional.of(image));
+		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+		Task result = taskService.updateTask(1L, new TaskRequest(null, null, null, 5L));
+
+		assertThat(result.getImage()).isEqualTo(image);
+	}
+
+	@Test
 	void updateTaskStatus_setsStatus() {
 		// Arrange
 		Task existing = Task.builder().id(1L).status(TaskStatus.PENDING).build();
@@ -227,15 +282,6 @@ class TaskServiceTest {
 	}
 
 	@Test
-	void updateTaskStatus_notFound() {
-		// Arrange
-		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
-		// Act + Assert
-		assertThrows(ResourceNotFoundException.class,
-				() -> taskService.updateTaskStatus(9999L, new TaskStatusUpdate(TaskStatus.RUNNING)));
-	}
-
-	@Test
 	void updateTaskStatus_clearsFinishedAt_whenNonTerminal() {
 		Task existing = Task.builder()
 				                .id(1L)
@@ -248,6 +294,15 @@ class TaskServiceTest {
 
 		assertEquals(TaskStatus.PENDING, existing.getStatus());
 		assertThat(existing.getFinishedAt()).isNull();
+	}
+
+	@Test
+	void updateTaskStatus_notFound() {
+		// Arrange
+		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
+		// Act + Assert
+		assertThrows(ResourceNotFoundException.class,
+				() -> taskService.updateTaskStatus(9999L, new TaskStatusUpdate(TaskStatus.RUNNING)));
 	}
 
 	@Test

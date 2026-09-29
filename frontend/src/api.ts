@@ -1,4 +1,4 @@
-import type { K8sJob, Task, TaskHistory, TaskRequest, TaskStatusUpdate } from "./types";
+import type { JobImage, JobImageRequest, K8sJob, Task, TaskHistory, TaskRequest, TaskStatusUpdate } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -99,4 +99,30 @@ export function deleteJob(name: string): Promise<void> {
 export function deleteJobs(label?: string): Promise<void> {
   const query = label?.trim() ? `?label=${encodeURIComponent(label.trim())}` : "";
   return request<void>(`/api/kubernetes/jobs${query}`, { method: "DELETE" });
+}
+
+export function getJobImages(): Promise<JobImage[]> {
+  return request<JobImage[]>("/api/v1/job-images");
+}
+
+export function getJobImage(id: number): Promise<JobImage> {
+  return request<JobImage>(`/api/v1/job-images/${id}`);
+}
+
+export function createJobImage(body: JobImageRequest): Promise<JobImage> {
+  return request<JobImage>("/api/v1/job-images", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateJobImage(id: number, body: JobImageRequest): Promise<JobImage> {
+  return request<JobImage>(`/api/v1/job-images/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteJobImage(id: number): Promise<void> {
+  return request<void>(`/api/v1/job-images/${id}`, { method: "DELETE" });
 }

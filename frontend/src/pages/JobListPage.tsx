@@ -87,22 +87,27 @@ export function JobListPage() {
         columnHelper.accessor((job) => job.metadata?.name ?? "", {
           id: "name",
           header: "Name",
+          minSize: 96,
         }),
         columnHelper.accessor((job) => formatLabelValues(job.metadata?.labels), {
           id: "labels",
           header: "Labels",
+          minSize: 120,
         }),
         columnHelper.accessor((job) => job.status?.active ?? 0, {
           id: "active",
           header: "Active",
+          minSize: 72,
         }),
         columnHelper.accessor((job) => job.status?.succeeded ?? 0, {
           id: "succeeded",
           header: "Succeeded",
+          minSize: 88,
         }),
         columnHelper.accessor((job) => job.status?.failed ?? 0, {
           id: "failed",
           header: "Failed",
+          minSize: 72,
         }),
         columnHelper.accessor(
           (job) => {
@@ -113,12 +118,14 @@ export function JobListPage() {
           {
             id: "started",
             header: "Started",
+            minSize: 88,
             cell: ({ row }) => formatWhen(row.original.status?.startTime),
           },
         ),
         columnHelper.display({
           id: "actions",
           header: "Actions",
+          minSize: 96,
           enableSorting: false,
           enableGlobalFilter: false,
           cell: ({ row }) => {

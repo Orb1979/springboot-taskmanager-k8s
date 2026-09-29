@@ -10,6 +10,9 @@ export function NavBar() {
         <NavLink to="/jobs" className={({ isActive }) => (isActive ? "active" : undefined)}>
           Jobs
         </NavLink>
+        <NavLink to="/job-images" className={({ isActive }) => (isActive ? "active" : undefined)}>
+          Job images
+        </NavLink>
       </div>
     </nav>
   );

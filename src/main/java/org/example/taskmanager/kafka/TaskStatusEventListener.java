@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.example.taskmanager.dto.TaskHistoryRequest;
 import org.example.taskmanager.dto.TaskStatusUpdate;
+import org.example.taskmanager.entity.Task;
+import org.example.taskmanager.entity.type.TaskStatus;
 import org.example.taskmanager.service.TaskHistoryService;
 import org.example.taskmanager.service.TaskService;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,14 +21,33 @@ public class TaskStatusEventListener {
 
 	@KafkaListener(topics = "task-status-events", groupId = "task-manager")
 	public void onTaskStatusEvent(TaskStatusEvent event) {
+		log.info("task-status-events: received, event: {} ",event);
 
 		if (event == null) {
-			log.warn("Received empty/tombstone message on task-status-events, ignoring");
+			log.warn("task-status-events: event is empty, ignoring");
 			return;
 		}
 
-		System.out.println(" >> Received task status event: " + event);
-		taskService.updateTaskStatus(event.taskId(), new TaskStatusUpdate(event.status(), event.errorMessage()));
-		taskHistoryService.createHistory(event.taskId(), new TaskHistoryRequest(event.status(), event.errorMessage()));
+		Task task = taskService.getTaskByReferenceId(event.taskReferenceId()).orElse(null);
+		if (task == null) {
+			log.warn("task-status-events: task not found, with reference ID {}, ignoring", event.taskReferenceId());
+			return;
+		}
+
+		if (task.getStatus().equals(TaskStatus.CANCELED)) {
+			log.warn("task-status-events: event for for cancelled task, ignoring event with status  {} ", event.status());
+			return;
+		}
+		if (task.getStatus().equals(TaskStatus.FAILED)) {
+			log.warn("task-status-events: event for for failed task, ignoring event with status  {} ", event.status());
+			return;
+		}
+		if (task.getStatus().equals(TaskStatus.COMPLETED)) {
+			log.warn("task-status-events: event for completed task, ignoring event with status {}", event.status());
+			return;
+		}
+
+		taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(event.status(), event.errorMessage()));
+		taskHistoryService.createHistory(task.getId(), new TaskHistoryRequest(event.status(), event.errorMessage()));
 	}
 }

@@ -15,12 +15,7 @@ public class KubernetesConfiguration {
 
 	@Bean
 	KubernetesClient kubernetesClient() {
-
-		if (kubernetesContext.isBlank() ) {
-			return new KubernetesClientBuilder().build();
-		}
-
-		Config config = Config.autoConfigure("rancher-desktop");
+		Config config = Config.autoConfigure(kubernetesContext);
     return new KubernetesClientBuilder()
         .withConfig(config)
         .build();
