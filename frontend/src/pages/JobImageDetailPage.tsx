@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getJobImage, updateJobImage } from "../api";
 import { messageOf } from "../format";
+import { useJobImage, useUpdateJobImage } from "../hooks/useJobImages";
 import type { JobImage } from "../types";
 
 interface JobImageForm {
@@ -19,41 +19,39 @@ function formFromImage(image: JobImage): JobImageForm {
 export function JobImageDetailPage() {
   const { id } = useParams();
   const imageId = Number(id);
-  const [image, setImage] = useState<JobImage | null>(null);
-  const [form, setForm] = useState<JobImageForm | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const validId = Number.isFinite(imageId);
+  const { data: image, isPending, error: imageError } = useJobImage(imageId, validId);
+  const updateImageMutation = useUpdateJobImage();
 
-  async function load(idToLoad: number) {
-    const next = await getJobImage(idToLoad);
-    setImage(next);
-    setForm(formFromImage(next));
-  }
+  const [form, setForm] = useState<JobImageForm | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const saving = updateImageMutation.isPending;
+  const loadError = !validId ? "Invalid job image id." : imageError ? messageOf(imageError) : null;
+  const error = saveError ?? loadError;
 
   useEffect(() => {
-    if (!Number.isFinite(imageId)) {
-      setError("Invalid job image id.");
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    load(imageId)
-      .catch((err: unknown) => {
-        if (active) setError(messageOf(err));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    setDirty(false);
+    setForm(null);
+    setSaveError(null);
   }, [imageId]);
+
+  useEffect(() => {
+    if (!image || dirty) return;
+    setForm(formFromImage(image));
+  }, [image, dirty]);
+
+  function updateForm(next: JobImageForm) {
+    setForm(next);
+    setDirty(true);
+  }
 
   function resetForm() {
     if (image) {
       setForm(formFromImage(image));
-      setError(null);
+      setDirty(false);
+      setSaveError(null);
     }
   }
 
@@ -62,26 +60,26 @@ export function JobImageDetailPage() {
     if (!image || !form) return;
     const imageName = form.imageName.trim();
     if (!imageName) {
-      setError("Image name is required.");
+      setSaveError("Image name is required.");
       return;
     }
 
-    setSaving(true);
-    setError(null);
+    setSaveError(null);
     try {
-      await updateJobImage(image.id, {
-        imageName,
-        description: form.description.trim() || null,
+      await updateImageMutation.mutateAsync({
+        id: image.id,
+        body: {
+          imageName,
+          description: form.description.trim() || null,
+        },
       });
-      await load(image.id);
+      setDirty(false);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setSaving(false);
+      setSaveError(messageOf(err));
     }
   }
 
-  if (loading) {
+  if (isPending && !image) {
     return (
       <section className="panel">
         <p className="muted">Loading job image…</p>
@@ -108,7 +106,7 @@ export function JobImageDetailPage() {
 
       {error && <p className="banner banner-error">{error}</p>}
 
-      <dl className="meta-grid">shou
+      <dl className="meta-grid">
         <dt>Id</dt>
         <dd>{image.id}</dd>
       </dl>
@@ -118,7 +116,7 @@ export function JobImageDetailPage() {
         <input
           id="edit-image-name"
           value={form.imageName}
-          onChange={(event) => setForm({ ...form, imageName: event.target.value })}
+          onChange={(event) => updateForm({ ...form, imageName: event.target.value })}
           required
         />
 
@@ -127,7 +125,7 @@ export function JobImageDetailPage() {
           id="edit-image-description"
           rows={4}
           value={form.description}
-          onChange={(event) => setForm({ ...form, description: event.target.value })}
+          onChange={(event) => updateForm({ ...form, description: event.target.value })}
         />
 
         <span />

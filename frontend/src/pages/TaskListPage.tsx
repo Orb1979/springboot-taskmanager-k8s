@@ -1,34 +1,40 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { cancelTask, createTask, deleteTask, executeTask, getJobImages, getTasks } from "../api";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { formatWhen, messageOf } from "../format";
+import { useCancelTask, useCreateTask, useDeleteTask, useExecuteTask, useTasks } from "../hooks/useTasks";
+import { useJobImages } from "../hooks/useJobImages";
 import { createAppColumnHelper } from "../table";
-import type { JobImage, Priority, Task } from "../types";
+import type { Priority, Task } from "../types";
 
 const PRIORITIES: Priority[] = ["HIGH", "MEDIUM", "LOW"];
 const columnHelper = createAppColumnHelper<Task>();
 
 export function TaskListPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const { data: tasks, isPending, error: tasksError } = useTasks();
+  const { data: jobImages = [], error: imagesError } = useJobImages();
+  const createTaskMutation = useCreateTask();
+  const executeTaskMutation = useExecuteTask();
+  const cancelTaskMutation = useCancelTask();
+  const deleteTaskMutation = useDeleteTask();
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     name: "",
     payload: "",
     priority: "MEDIUM" as Priority,
     imageId: "",
   });
-  const [jobImages, setJobImages] = useState<JobImage[]>([]);
 
-  async function loadTasks() {
-    setTasks(await getTasks());
-  }
+  const creating = createTaskMutation.isPending;
+  const busyId =
+    (executeTaskMutation.isPending ? executeTaskMutation.variables : null) ??
+    (cancelTaskMutation.isPending ? cancelTaskMutation.variables : null) ??
+    (deleteTaskMutation.isPending ? deleteTaskMutation.variables : null);
+  const error = actionError ?? (tasksError ? messageOf(tasksError) : null);
 
   useEffect(() => {
     if (!createOpen) return;
@@ -40,30 +46,6 @@ export function TaskListPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [createOpen, creating]);
-
-  useEffect(() => {
-    let active = true;
-    getTasks()
-      .then((next) => {
-        if (active) setTasks(next);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(messageOf(err));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!createOpen) return;
-    getJobImages()
-      .then(setJobImages)
-      .catch((err: unknown) => setCreateError(messageOf(err)));
-  }, [createOpen]);
 
   function openCreate() {
     setCreateError(null);
@@ -84,10 +66,9 @@ export function TaskListPage() {
       setCreateError("Task name is required.");
       return;
     }
-    setCreating(true);
     setCreateError(null);
     try {
-      await createTask({
+      await createTaskMutation.mutateAsync({
         name,
         payload: createForm.payload,
         priority: createForm.priority,
@@ -95,58 +76,42 @@ export function TaskListPage() {
       });
       setCreateForm({ name: "", payload: "", priority: "MEDIUM", imageId: "" });
       setCreateOpen(false);
-      await loadTasks();
     } catch (err: unknown) {
       setCreateError(messageOf(err));
-    } finally {
-      setCreating(false);
     }
   }
 
   async function onExecute(task: Task) {
-    setBusyId(task.id);
-    setError(null);
+    setActionError(null);
     try {
-      await executeTask(task.id);
-      await loadTasks();
+      await executeTaskMutation.mutateAsync(task.id);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setBusyId(null);
+      setActionError(messageOf(err));
     }
   }
 
   async function onCancel(task: Task) {
-    setBusyId(task.id);
-    setError(null);
+    setActionError(null);
     try {
-      await cancelTask(task.id);
-      await loadTasks();
+      await cancelTaskMutation.mutateAsync(task.id);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setBusyId(null);
+      setActionError(messageOf(err));
     }
   }
 
   async function onDelete(task: Task) {
     if (!window.confirm(`Delete task ${task.name}?`)) return;
-    setBusyId(task.id);
-    setError(null);
+    setActionError(null);
     try {
-      await deleteTask(task.id);
-      await loadTasks();
+      await deleteTaskMutation.mutateAsync(task.id);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setBusyId(null);
+      setActionError(messageOf(err));
     }
   }
 
   const columns = useMemo(
     () =>
       columnHelper.columns([
-
         columnHelper.accessor("name", { header: "Name", minSize: 100 }),
         columnHelper.accessor("referenceId", { header: "Reference ID", minSize: 100 }),
         columnHelper.accessor((task) => task.image?.imageName ?? "", {
@@ -155,7 +120,6 @@ export function TaskListPage() {
           minSize: 100,
           cell: ({ getValue }) => getValue() || "—",
         }),
-
         columnHelper.accessor("createdAt", {
           header: "Created",
           minSize: 90,
@@ -236,6 +200,7 @@ export function TaskListPage() {
             </div>
 
             {createError && <p className="banner banner-error">{createError}</p>}
+            {!createError && imagesError && <p className="banner banner-error">{messageOf(imagesError)}</p>}
 
             <form className="form-grid" onSubmit={onCreate}>
               <label htmlFor="create-name">Name</label>
@@ -298,16 +263,16 @@ export function TaskListPage() {
         </div>
       )}
 
-      {loading ? (
+      {isPending && !tasks ? (
         <p className="muted">Loading tasks…</p>
       ) : (
         <DataTable
-          data={tasks}
+          data={tasks ?? []}
           columns={columns}
           getRowId={(task) => String(task.id)}
           initialSorting={[{ id: "createdAt", desc: true }]}
           searchPlaceholder="Search tasks…"
-          emptyMessage={tasks.length === 0 ? "No tasks yet." : "No tasks match that search."}
+          emptyMessage={(tasks ?? []).length === 0 ? "No tasks yet." : "No tasks match that search."}
         />
       )}
     </section>

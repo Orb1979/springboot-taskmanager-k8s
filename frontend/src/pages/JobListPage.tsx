@@ -1,66 +1,49 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { deleteJob, deleteJobs, listJobs } from "../api";
 import { DataTable } from "../components/DataTable";
 import { formatLabelValues, formatWhen, messageOf } from "../format";
+import { fetchJobs, useDeleteJob, useDeleteJobs, useJobs } from "../hooks/useJobs";
 import { createAppColumnHelper } from "../table";
 import type { K8sJob } from "../types";
 
 const columnHelper = createAppColumnHelper<K8sJob>();
 
 export function JobListPage() {
-  const [jobs, setJobs] = useState<K8sJob[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filterLabel, setFilterLabel] = useState("");
+  const [appliedLabel, setAppliedLabel] = useState("");
   const [deleteLabel, setDeleteLabel] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  async function load(label = filterLabel) {
-    setJobs(await listJobs(label));
-  }
+  const { data: jobs, isPending, error: jobsError } = useJobs(appliedLabel);
+  const deleteJobMutation = useDeleteJob();
+  const deleteJobsMutation = useDeleteJobs();
 
-  useEffect(() => {
-    let active = true;
-    listJobs()
-      .then((next) => {
-        if (active) setJobs(next);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(messageOf(err));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const busy = refreshing || deleteJobMutation.isPending || deleteJobsMutation.isPending;
+  const error = actionError ?? (jobsError ? messageOf(jobsError) : null);
 
   async function onRefresh(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
-    setError(null);
+    setRefreshing(true);
+    setActionError(null);
     try {
-      await load(filterLabel);
+      const next = filterLabel;
+      setAppliedLabel(next);
+      await fetchJobs(next);
     } catch (err: unknown) {
-      setError(messageOf(err));
+      setActionError(messageOf(err));
     } finally {
-      setBusy(false);
+      setRefreshing(false);
     }
   }
 
   async function onDelete(name: string) {
     if (!window.confirm(`Delete job ${name}?`)) return;
-    setBusy(true);
-    setError(null);
+    setActionError(null);
     try {
-      await deleteJob(name);
-      await load(filterLabel);
+      await deleteJobMutation.mutateAsync(name);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setBusy(false);
+      setActionError(messageOf(err));
     }
   }
 
@@ -69,15 +52,11 @@ export function JobListPage() {
     const label = deleteLabel.trim();
     const prompt = label ? `Delete jobs with label name=${label}?` : "Delete all jobs?";
     if (!window.confirm(prompt)) return;
-    setBusy(true);
-    setError(null);
+    setActionError(null);
     try {
-      await deleteJobs(label);
-      await load(filterLabel);
+      await deleteJobsMutation.mutateAsync(label);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setBusy(false);
+      setActionError(messageOf(err));
     }
   }
 
@@ -189,16 +168,16 @@ export function JobListPage() {
         </button>
       </form>
 
-      {loading ? (
+      {isPending && !jobs ? (
         <p className="muted">Loading jobs…</p>
       ) : (
         <DataTable
-          data={jobs}
+          data={jobs ?? []}
           columns={columns}
           getRowId={(job, index) => job.metadata?.name ?? String(index)}
           initialSorting={[{ id: "started", desc: true }]}
           searchPlaceholder="Search jobs…"
-          emptyMessage={jobs.length === 0 ? "No jobs found." : "No jobs match that search."}
+          emptyMessage={(jobs ?? []).length === 0 ? "No jobs found." : "No jobs match that search."}
         />
       )}
     </section>
