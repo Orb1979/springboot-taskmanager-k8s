@@ -116,10 +116,10 @@ class TaskRunServiceTest {
 
 		taskRunService.cancelTask(existing.getId());
 
+		verify(kubernetesService).deleteJobsByName(existing.getReferenceId().toString());
 		verify(taskService).updateTaskStatus(
 				existing.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
 		verify(taskHistoryService).createHistory(
 				existing.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
-		verify(kubernetesService).deleteJobsByName(existing.getReferenceId().toString());
 	}
 }

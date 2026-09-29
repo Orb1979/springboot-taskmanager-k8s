@@ -168,6 +168,7 @@ class TaskServiceTest {
 				                .payload("{}")
 				                .priority(Priority.LOW)
 				                .build();
+
 		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 		TaskRequest request = new TaskRequest("new", null, null);
@@ -281,15 +282,6 @@ class TaskServiceTest {
 	}
 
 	@Test
-	void updateTaskStatus_notFound() {
-		// Arrange
-		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
-		// Act + Assert
-		assertThrows(ResourceNotFoundException.class,
-				() -> taskService.updateTaskStatus(9999L, new TaskStatusUpdate(TaskStatus.RUNNING)));
-	}
-
-	@Test
 	void updateTaskStatus_clearsFinishedAt_whenNonTerminal() {
 		Task existing = Task.builder()
 				                .id(1L)
@@ -302,6 +294,15 @@ class TaskServiceTest {
 
 		assertEquals(TaskStatus.PENDING, existing.getStatus());
 		assertThat(existing.getFinishedAt()).isNull();
+	}
+
+	@Test
+	void updateTaskStatus_notFound() {
+		// Arrange
+		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
+		// Act + Assert
+		assertThrows(ResourceNotFoundException.class,
+				() -> taskService.updateTaskStatus(9999L, new TaskStatusUpdate(TaskStatus.RUNNING)));
 	}
 
 	@Test

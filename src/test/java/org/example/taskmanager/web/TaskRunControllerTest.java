@@ -52,7 +52,6 @@ You're testing that the controller:
 @Import(ApiExceptionHandler.class)
 class TaskRunControllerTest {
 	@Autowired private MockMvc mockMvc;
-
 	@MockitoBean private TaskRunService taskRunService;
 	@MockitoBean private KubernetesService kubernetesService;
 

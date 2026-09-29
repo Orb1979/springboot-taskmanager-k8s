@@ -35,14 +35,12 @@ public class TaskService {
 
 	@Transactional(readOnly = true)
 	public Task getTask(Long id) {
-		// A plain findById leaves history as an uninitialized proxy — fine inside the transaction, broken once it's over.
 		return taskRepository.findWithHistoryById(id)
 				       .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
 	}
 
 	@Transactional(readOnly = true)
 	public List<Task> getTasks() {
-		// A plain findAll leaves history as an uninitialized proxy — fine inside the transaction, broken once it's over.
 		return taskRepository.findAllWithHistoryBy();
 	}
 
