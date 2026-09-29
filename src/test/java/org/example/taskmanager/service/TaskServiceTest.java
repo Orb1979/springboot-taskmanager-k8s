@@ -125,6 +125,18 @@ class TaskServiceTest {
 	}
 
 	@Test
+	void createTask_normalizesName_throwException_on_name_is_null() {
+		assertThrows(TaskInvalidException.class, ()-> taskService.createTask(new TaskRequest(null, "{}", Priority.HIGH)));
+	}
+
+	@Test
+	void createTask_normalizesName_trim() {
+		when(taskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+		Task result = taskService.createTask(new TaskRequest(" trimmed ", "{}", Priority.HIGH));
+		assertEquals("trimmed", result.getName());
+	}
+
+	@Test
 	void createTask_with_empty_payload() {
 		// Arrange
 		when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));

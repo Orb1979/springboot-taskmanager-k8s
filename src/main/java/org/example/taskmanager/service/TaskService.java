@@ -49,7 +49,7 @@ public class TaskService {
 	public Task createTask(TaskRequest request) {
     Task task =
         Task.builder()
-            .name(request.name())
+            .name(normalizeName(request.name()))
             .priority(request.priority())
             .payload(normalizePayload(request.payload()))
             .status(TaskStatus.PENDING)
@@ -62,7 +62,7 @@ public class TaskService {
 	public Task updateTask(Long id, TaskRequest request) {
 		Task task = getTask(id);
 		if (request.name() != null) {
-			task.setName(request.name());
+			task.setName(normalizeName(request.name()));
 		}
 		if (request.payload() != null) {
 			task.setPayload(normalizePayload(request.payload()));
@@ -94,6 +94,13 @@ public class TaskService {
 		}
 		return jobImageRepository.findById(imageId)
 				       .orElseThrow(() -> new ResourceNotFoundException("Job image not found with id: " + imageId));
+	}
+
+	private String normalizeName(String name) {
+		if (name == null) {
+			throw new TaskInvalidException("Task name must not be null");
+		}
+		return name.trim();
 	}
 
 	private String normalizePayload(String payload) {
