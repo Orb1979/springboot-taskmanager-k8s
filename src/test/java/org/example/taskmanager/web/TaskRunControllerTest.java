@@ -3,7 +3,9 @@ package org.example.taskmanager.web;
 import org.example.taskmanager.entity.Task;
 import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
+import org.example.taskmanager.exception.K8sJobAlreadyExistException;
 import org.example.taskmanager.exception.ResourceNotFoundException;
+import org.example.taskmanager.exception.TaskInvalidException;
 import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.example.taskmanager.service.KubernetesService;
 import org.example.taskmanager.service.TaskRunService;
@@ -13,7 +15,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.UUID;
 
@@ -51,7 +52,6 @@ You're testing that the controller:
 @Import(ApiExceptionHandler.class)
 class TaskRunControllerTest {
 	@Autowired private MockMvc mockMvc;
-	@Autowired private ObjectMapper objectMapper;
 
 	@MockitoBean private TaskRunService taskRunService;
 	@MockitoBean private KubernetesService kubernetesService;
@@ -67,7 +67,7 @@ class TaskRunControllerTest {
 	}
 
 	@Test
-	void executeExistingTask() throws Exception {
+	void executeTask() throws Exception {
 		// Arrange
 		Task submitted = sampleTask(TaskStatus.PENDING);
 		when(taskRunService.execTask(1L)).thenReturn(submitted);
@@ -78,6 +78,17 @@ class TaskRunControllerTest {
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.id").value(1))
 				.andExpect(jsonPath("$.status").value("PENDING"));
+	}
+
+	@Test
+	void executeTask_jobAlreadyExists_returnsConflict() throws Exception {
+		when(taskRunService.execTask(anyLong()))
+				.thenThrow(new K8sJobAlreadyExistException("Job 'x' already exists in the cluster."));
+
+		mockMvc
+				.perform(post("/api/v1/execute/1"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.detail").value("Job 'x' already exists in the cluster."));
 	}
 
 	@Test
@@ -105,7 +116,7 @@ class TaskRunControllerTest {
 	@Test
 	void executeTask_invalidArgument_returnsBadRequest() throws Exception {
 		when(taskRunService.execTask(anyLong()))
-				.thenThrow(new IllegalArgumentException("Payload must contain valid JSON"));
+				.thenThrow(new TaskInvalidException("Payload must contain valid JSON"));
 
 		mockMvc
 				.perform(post("/api/v1/execute/1"))
