@@ -1,5 +1,13 @@
 import type { JobImage, JobImageRequest, K8sJob, Task, TaskHistory, TaskRequest, TaskStatusUpdate } from "./types";
 
+/*
+Centralizes common HTTP request handling.
+- adds JSON headers
+- calls the await fetch http request
+- handles 204 No Content responses
+- parses JSON responses (await response.text())
+- converts API error responses into readable errors.
+*/
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Accept", "application/json");
