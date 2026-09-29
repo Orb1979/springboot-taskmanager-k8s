@@ -86,14 +86,11 @@ class TaskExecutionIntegrationTest {
 	  Task second = taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.COMPLETED));
 	  taskHistoryService.createHistory(second.getId(), new TaskHistoryRequest(TaskStatus.COMPLETED));
 
-		// for task history we to call getTask()
-		//Task refresh = taskService.getTask(second.getId());
-
     // Assert
     assertThat(first.getStatus()).isEqualTo(TaskStatus.FAILED);
     assertThat(second.getStatus()).isEqualTo(TaskStatus.COMPLETED);
     assertThat(second.getFinishedAt()).isNotNull();
-    //assertThat(refresh.getHistory().size()).isGreaterThan(1);
+    assertThat(second.getHistory().size()).isGreaterThan(1);
   }
 }
 

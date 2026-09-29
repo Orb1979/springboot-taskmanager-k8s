@@ -55,7 +55,7 @@ public class TaskService {
 	}
 
 	public Task updateTask(Long id, TaskRequest request) {
-		Task task = findTaskOrThrow(id);
+		Task task = getTask(id);
 		if (request.name() != null) {
 			task.setName(request.name());
 		}
@@ -69,7 +69,7 @@ public class TaskService {
 	}
 
 	public Task updateTaskStatus(Long id, TaskStatusUpdate update) {
-		Task task = findTaskOrThrow(id);
+		Task task = getTask(id);
 		task.setStatus(update.status());
 		if (isTerminal(update.status())) {
 			task.setFinishedAt(LocalDateTime.now());
