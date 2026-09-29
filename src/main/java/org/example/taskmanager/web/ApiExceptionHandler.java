@@ -2,6 +2,7 @@ package org.example.taskmanager.web;
 
 import org.example.taskmanager.exception.K8sJobAlreadyExistException;
 import org.example.taskmanager.exception.ResourceNotFoundException;
+import org.example.taskmanager.exception.TaskInvalidException;
 import org.example.taskmanager.exception.TaskNonStartableStateException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,6 +38,11 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ProblemDetail handleBadRequest(IllegalArgumentException exception) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+	}
+
+	@ExceptionHandler(TaskInvalidException.class)
+	public ProblemDetail handleBadRequest(TaskInvalidException exception) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
 	}
 }
