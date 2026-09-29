@@ -42,11 +42,11 @@ public class TaskRunService {
 
   public void cancelTask(Long taskId) {
     Task task = taskService.getTask(taskId);
+    kubernetesService.deleteJobsByName(task.getReferenceId().toString());
     taskService.updateTaskStatus(
         task.getId(), new TaskStatusUpdate(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
     taskHistoryService.createHistory(
         task.getId(), new TaskHistoryRequest(TaskStatus.CANCELED, TaskStatus.CANCELED.toString()));
-    kubernetesService.deleteJobsByName(task.getReferenceId().toString());
   }
 
   private Task execTask(Task task) {
