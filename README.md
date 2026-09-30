@@ -149,3 +149,30 @@ PostgreSQL is often hosted outside the Kubernetes cluster, usually as a managed 
 The Spring Boot app connects to its private hostname over the network. 
 This keeps database storage, backups, and upgrades separate from the app cluster.
 ```
+
+```
+Notes on locking and race conditions
+
+A worker event and a cancel update both write the same task row. 
+The worker event locks that row first, then cancel waits until the lock is released.
+g
+Worker event                         Database                         Cancel
+     |                                  |                               |
+     |--- lock row, read status ------->|                               |
+     |                                  |<-------- waits for lock ------|
+     |                                  |                               |
+     |                          status already terminal?                |
+     |                                  |                               |
+     |  yes: commit, row unchanged      |                               |
+     |--------------------------------->|                               |
+     |                                  |-------- writes CANCELED ----->|
+     |                                  |                               |
+     |  no: status + history, one commit|                               |
+     |--------------------------------->|                               |
+     |                                  |--- writes CANCELED after ---->|
+
+
+If the row is already CANCELED, FAILED, or COMPLETED, the worker event commits nothing 
+and cancel update writes CANCELED after it gets the lock. 
+If the row is still active, the worker event commits the new status and its history row together. Cance
+```

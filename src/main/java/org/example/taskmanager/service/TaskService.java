@@ -77,13 +77,37 @@ public class TaskService {
 	public Task updateTaskStatus(Long id, TaskStatusUpdate update) {
 		// we can update to any state, atm there is no allowed-transition check (not a state machine)
 		Task task = getTask(id);
+		applyStatus(task, update);
+		return taskRepository.save(task);
+	}
+
+	/**
+	 * Applies a worker status event and its history row in one transaction. (TaskService is @Transactional)
+	 * A row that is already terminal is left unchanged.
+	 * @return false when the event was ignored because the task is already terminal
+	 */
+	public boolean applyWorkerStatus(Long id, TaskStatusUpdate update) {
+		Task task = taskRepository.findByIdForUpdate(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+		if (isTerminal(task.getStatus())) {
+			return false;
+		}
+		applyStatus(task, update);
+		task.addHistory(TaskHistory.builder()
+				.status(update.status())
+				.errorMessage(update.errorMessage())
+				.build());
+		taskRepository.save(task);
+		return true;
+	}
+
+	private void applyStatus(Task task, TaskStatusUpdate update) {
 		task.setStatus(update.status());
 		if (isTerminal(update.status())) {
 			task.setFinishedAt(LocalDateTime.now());
 		} else {
 			task.setFinishedAt(null);
 		}
-		return taskRepository.save(task);
 	}
 
 	private JobImage resolveImage(Long imageId) {

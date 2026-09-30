@@ -297,6 +297,39 @@ class TaskServiceTest {
 	}
 
 	@Test
+	void applyWorkerStatus_setsTerminalStatusAndHistory() {
+		Task existing = Task.builder().id(1L).status(TaskStatus.RUNNING).build();
+		when(taskRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+		boolean applied = taskService.applyWorkerStatus(1L, new TaskStatusUpdate(TaskStatus.COMPLETED, "boom"));
+
+		assertThat(applied).isTrue();
+		assertEquals(TaskStatus.COMPLETED, existing.getStatus());
+		assertThat(existing.getFinishedAt()).isNotNull();
+		assertThat(existing.getHistory()).hasSize(1);
+		assertEquals(TaskStatus.COMPLETED, existing.getHistory().getFirst().getStatus());
+		assertEquals("boom", existing.getHistory().getFirst().getErrorMessage());
+	}
+
+	@Test
+	void applyWorkerStatus_skipsTerminalTask() {
+		Task existing = Task.builder()
+				.id(1L)
+				.status(TaskStatus.CANCELED)
+				.finishedAt(LocalDateTime.now())
+				.build();
+		when(taskRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(existing));
+
+		boolean applied = taskService.applyWorkerStatus(1L, new TaskStatusUpdate(TaskStatus.COMPLETED, "late"));
+
+		assertThat(applied).isFalse();
+		assertEquals(TaskStatus.CANCELED, existing.getStatus());
+		assertThat(existing.getHistory()).isEmpty();
+		verify(taskRepository, never()).save(any());
+	}
+
+	@Test
 	void updateTaskStatus_notFound() {
 		// Arrange
 		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());

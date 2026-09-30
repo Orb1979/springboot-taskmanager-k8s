@@ -56,6 +56,11 @@ public class Task {
   @Column(nullable = false)
   private TaskStatus status;
 
+  /*
+  CascadeType.ALL is the line that persists a new TaskHistory
+  It tells Hibernate: when this Task is saved, also save every new TaskHistory in history.
+  See: addHistory() where we add the history;
+  */
   @Builder.Default
   @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private List<TaskHistory> history = new ArrayList<>();
