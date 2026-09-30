@@ -18,9 +18,12 @@ docker context use rancher-desktop
 docker-compose down -v
 docker-comnpose up -d
 
+# create kubectl namespace
+kubectl create namespace taskmanager
+
 # create worker image
 cd worker/python-worker
-docker build -t worker-counter:v1 .
+docker build -t worker-counter:v2 .
 docker images | grep worker-counter
 
 # start app through gradle
@@ -33,10 +36,10 @@ http://localhost:8080/swagger-ui/index.html
 http://localhost:8081/
 
 # test the worker in kubectl
-kubectl get po
-kubectl get jobs
-kubectl delete jobs <name>
-kubectl delete jobs --all
+kubectl get po -n taskmanager
+kubectl get jobs -n taskmanager
+kubectl delete jobs <name> -n taskmanager
+kubectl delete jobs --all -n taskmanager
 ```
 
 ````

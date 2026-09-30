@@ -7,9 +7,9 @@ import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.example.taskmanager.exception.K8sJobAlreadyExistException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -18,9 +18,14 @@ import java.util.function.Function;
 
 @Service
 @Log4j2
-@RequiredArgsConstructor
 public class KubernetesService {
   private final KubernetesClient kubernetesClient;
+  private final String namespace;
+
+  public KubernetesService(KubernetesClient kubernetesClient, @Value("${kubernetes.namespace}") String namespace) {
+    this.kubernetesClient = kubernetesClient;
+    this.namespace = namespace;
+  }
 
   public void createJob(String name, String image, Function<ContainerBuilder, ContainerBuilder > config) {
     Job job = getJobsByName(name);
@@ -55,7 +60,7 @@ public class KubernetesService {
 
     //  Spin up the Job in the cluster
    try {
-      kubernetesClient.batch().v1().jobs().inNamespace("default").resource(k8sJob).create();
+      kubernetesClient.batch().v1().jobs().inNamespace(namespace).resource(k8sJob).create();
       log.info("Successfully launched Kubernetes job: {}", name);
     } catch (KubernetesClientException e) {
       log.error("Failed to launch job '{}' due to an unexpected error", name, e);
@@ -65,7 +70,7 @@ public class KubernetesService {
 
   /** @param label optional value of Kubernetes label key {@code name}; omit to list all jobs */
   public List<Job> listJobs(String label) {
-    var jobs = kubernetesClient.batch().v1().jobs().inNamespace("default");
+    var jobs = kubernetesClient.batch().v1().jobs().inNamespace(namespace);
     if (StringUtils.hasText(label)) {
       return jobs.withLabel("name", label).list().getItems();
     }
@@ -74,7 +79,7 @@ public class KubernetesService {
 
   public Job getJobsByName(String name) {
     return kubernetesClient.batch().v1().jobs().
-        inNamespace("default")
+        inNamespace(namespace)
         .withName(name)
         .get();
   }
@@ -82,7 +87,7 @@ public class KubernetesService {
   /** @param label optional value of Kubernetes label key {@code name}; omit to delete all jobs */
   public void deleteJobs(String label) {
     try {
-      var jobs = kubernetesClient.batch().v1().jobs().inNamespace("default");
+      var jobs = kubernetesClient.batch().v1().jobs().inNamespace(namespace);
       if (StringUtils.hasText(label)) {
         jobs.withLabel("name", label).delete();
         log.info("Successfully deleted Kubernetes jobs with label name={}", label);
@@ -98,7 +103,7 @@ public class KubernetesService {
 
   public void deleteJobsByName(String name) {
     try {
-      kubernetesClient.batch().v1().jobs().inNamespace("default").withName(name).delete();
+      kubernetesClient.batch().v1().jobs().inNamespace(namespace).withName(name).delete();
       log.info("Successfully deleted Kubernetes job for name {}", name);
     } catch (KubernetesClientException e) {
       log.error("Failed to delete Kubernetes job due to an unexpected error", e);
