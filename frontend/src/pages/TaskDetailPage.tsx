@@ -7,7 +7,7 @@ import { useTask, useTaskHistory, useUpdateTask, useUpdateTaskStatus } from "../
 import type { Priority, Task, TaskStatus } from "../types";
 
 const PRIORITIES: Priority[] = ["HIGH", "MEDIUM", "LOW"];
-const STATUSES: TaskStatus[] = ["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELED"];
+const STATUSES: TaskStatus[] = ["PENDING", "SUBMITTED", "RUNNING", "COMPLETED", "FAILED", "CANCELED"];
 
 interface TaskForm {
   name: string;

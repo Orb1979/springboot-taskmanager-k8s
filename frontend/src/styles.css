@@ -292,6 +292,11 @@ textarea {
   color: #1d3f9a;
 }
 
+.status-SUBMITTED {
+  background: #efe8fb;
+  color: #4c2d8a;
+}
+
 .status-RUNNING {
   background: #e7f6ee;
   color: #0d6b3a;

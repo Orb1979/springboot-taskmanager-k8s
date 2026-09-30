@@ -1,6 +1,6 @@
 export type Priority = "HIGH" | "MEDIUM" | "LOW";
 
-export type TaskStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELED";
+export type TaskStatus = "PENDING" | "SUBMITTED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELED";
 
 export interface TaskHistory {
   id: number;

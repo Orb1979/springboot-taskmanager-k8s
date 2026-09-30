@@ -64,6 +64,8 @@ public class TaskRunService {
       taskHistoryService.createHistory(task.getId(), new TaskHistoryRequest(TaskStatus.FAILED, e.getMessage()));
       throw e;
     }
+    taskService.updateTaskStatus(task.getId(), new TaskStatusUpdate(TaskStatus.SUBMITTED));
+    taskHistoryService.createHistory(task.getId(), new TaskHistoryRequest(TaskStatus.SUBMITTED));
     return taskService.getTask(task.getId());
   }
 

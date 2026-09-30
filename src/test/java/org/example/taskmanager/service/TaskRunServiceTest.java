@@ -49,13 +49,18 @@ class TaskRunServiceTest {
 	@Test
 	void execTask_success() {
 		Task task = pendingTask();
-		when(taskService.getTask(1L)).thenReturn(task);
+		Task submitted = pendingTask();
+		submitted.setReferenceId(task.getReferenceId());
+		submitted.setStatus(TaskStatus.SUBMITTED);
+		when(taskService.getTask(1L)).thenReturn(task, submitted);
 
 		Task result = taskRunService.execTask(1L);
 
 		verify(kubernetesService).createJob(eq(task.getReferenceId().toString()), eq("worker-counter:v2"), any());
+		verify(taskService).updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.SUBMITTED));
+		verify(taskHistoryService).createHistory(1L, new TaskHistoryRequest(TaskStatus.SUBMITTED));
 		verify(taskService, never()).updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.FAILED, null));
-		assertThat(result).isEqualTo(task);
+		assertThat(result.getStatus()).isEqualTo(TaskStatus.SUBMITTED);
 	}
 
 	@Test
@@ -71,7 +76,7 @@ class TaskRunServiceTest {
 	@ParameterizedTest
 	@EnumSource(
 			value = TaskStatus.class,
-			names = {"COMPLETED", "FAILED", "RUNNING", "CANCELED"}
+			names = {"SUBMITTED", "COMPLETED", "FAILED", "RUNNING", "CANCELED"}
 	)
 	void execTask_is_not_startable(TaskStatus status) {
 		Task task = pendingTask();

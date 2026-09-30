@@ -68,7 +68,7 @@ class TaskRunControllerTest {
 	@Test
 	void executeTask() throws Exception {
 		// Arrange
-		Task submitted = sampleTask(TaskStatus.PENDING);
+		Task submitted = sampleTask(TaskStatus.SUBMITTED);
 		when(taskRunService.execTask(1L)).thenReturn(submitted);
 
 		// Act + Assert
@@ -76,7 +76,7 @@ class TaskRunControllerTest {
 				.perform(post("/api/v1/execute/1"))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.id").value(1))
-				.andExpect(jsonPath("$.status").value("PENDING"));
+				.andExpect(jsonPath("$.status").value("SUBMITTED"));
 	}
 
 	@Test

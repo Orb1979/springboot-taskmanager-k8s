@@ -48,7 +48,7 @@ class TaskExecutionWithKubernetesTest {
     TaskRequest request = request("{\"durationSeconds\": 10, \"monkey\": \"balls\"}");
     Task task = taskService.createTask(request);
     Task result = taskRunService.execTask(task.getId());
-    assertThat(result.getStatus()).isEqualTo(TaskStatus.PENDING);
+    assertThat(result.getStatus()).isEqualTo(TaskStatus.SUBMITTED);
   }
 
   @Test
@@ -56,7 +56,7 @@ class TaskExecutionWithKubernetesTest {
     TaskRequest request = request("{\"durationSeconds\": 3600, \"monkey\": \"balls\"}");
     Task task = taskService.createTask(request);
     Task result = taskRunService.execTask(task.getId());
-    assertThat(result.getStatus()).isEqualTo(TaskStatus.PENDING);
+    assertThat(result.getStatus()).isEqualTo(TaskStatus.SUBMITTED);
   }
 }
 
