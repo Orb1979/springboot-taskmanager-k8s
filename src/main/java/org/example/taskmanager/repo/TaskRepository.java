@@ -1,9 +1,12 @@
 package org.example.taskmanager.repo;
 
+import jakarta.persistence.LockModeType;
 import org.example.taskmanager.entity.Task;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +15,10 @@ import java.util.UUID;
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
 	Optional<Task> findByReferenceId(UUID referenceId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select t from Task t where t.id = :id")
+	Optional<Task> findByIdForUpdate(@Param("id") Long id);
 
 	/*
 	@EntityGraph
