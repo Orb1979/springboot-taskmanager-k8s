@@ -1,5 +1,6 @@
 import {
   columnFilteringFeature,
+  columnSizingFeature,
   createFilteredRowModel,
   createSortedRowModel,
   createTableHook,
@@ -15,6 +16,7 @@ export const { useAppTable, createAppColumnHelper } = createTableHook({
     rowSortingFeature,
     columnFilteringFeature,
     globalFilteringFeature,
+    columnSizingFeature,
     sortedRowModel: createSortedRowModel(),
     filteredRowModel: createFilteredRowModel(),
     sortFns,

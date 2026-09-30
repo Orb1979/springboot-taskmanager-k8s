@@ -1,39 +1,14 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getJob } from "../api";
 import { formatLabels, formatWhen, messageOf } from "../format";
-import type { K8sJob } from "../types";
+import { useJob } from "../hooks/useJobs";
 
 export function JobDetailPage() {
   const { name } = useParams();
   const jobName = name ? decodeURIComponent(name) : "";
-  const [job, setJob] = useState<K8sJob | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: job, isPending, error: jobError } = useJob(jobName, Boolean(jobName));
+  const error = !jobName ? "Missing job name." : jobError ? messageOf(jobError) : null;
 
-  useEffect(() => {
-    if (!jobName) {
-      setError("Missing job name.");
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    getJob(jobName)
-      .then((next) => {
-        if (active) setJob(next);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(messageOf(err));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [jobName]);
-
-  if (loading) {
+  if (isPending && !job) {
     return (
       <section className="panel">
         <p className="muted">Loading job…</p>

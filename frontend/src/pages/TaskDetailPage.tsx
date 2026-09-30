@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getJobImages, getTask, getTaskHistory, updateTask, updateTaskStatus } from "../api";
 import { StatusBadge } from "../components/StatusBadge";
 import { formatWhen, messageOf } from "../format";
-import type { JobImage, Priority, Task, TaskHistory, TaskStatus } from "../types";
+import { useJobImages } from "../hooks/useJobImages";
+import { useTask, useTaskHistory, useUpdateTask, useUpdateTaskStatus } from "../hooks/useTasks";
+import type { Priority, Task, TaskStatus } from "../types";
 
 const PRIORITIES: Priority[] = ["HIGH", "MEDIUM", "LOW"];
 const STATUSES: TaskStatus[] = ["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELED"];
@@ -31,49 +32,48 @@ function formFromTask(task: Task): TaskForm {
 export function TaskDetailPage() {
   const { id } = useParams();
   const taskId = Number(id);
-  const [task, setTask] = useState<Task | null>(null);
-  const [history, setHistory] = useState<TaskHistory[]>([]);
-  const [form, setForm] = useState<TaskForm | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [jobImages, setJobImages] = useState<JobImage[]>([]);
+  const validId = Number.isFinite(taskId);
+  const { data: task, isPending: taskPending, error: taskError } = useTask(taskId, validId);
+  const { data: history = [], error: historyError } = useTaskHistory(taskId, validId);
+  const { data: jobImages = [] } = useJobImages();
+  const updateTaskMutation = useUpdateTask();
+  const updateStatusMutation = useUpdateTaskStatus();
 
-  async function load(idToLoad: number) {
-    const [nextTask, nextHistory, nextImages] = await Promise.all([
-      getTask(idToLoad),
-      getTaskHistory(idToLoad),
-      getJobImages(),
-    ]);
-    setTask(nextTask);
-    setHistory(nextHistory);
-    setJobImages(nextImages);
-    setForm(formFromTask(nextTask));
-  }
+  const [form, setForm] = useState<TaskForm | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const saving = updateTaskMutation.isPending || updateStatusMutation.isPending;
+  const loadError = !validId
+    ? "Invalid task id."
+    : taskError
+      ? messageOf(taskError)
+      : historyError
+        ? messageOf(historyError)
+        : null;
+  const error = saveError ?? loadError;
 
   useEffect(() => {
-    if (!Number.isFinite(taskId)) {
-      setError("Invalid task id.");
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    load(taskId)
-      .catch((err: unknown) => {
-        if (active) setError(messageOf(err));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    setDirty(false);
+    setForm(null);
+    setSaveError(null);
   }, [taskId]);
+
+  useEffect(() => {
+    if (!task || dirty) return;
+    setForm(formFromTask(task));
+  }, [task, dirty]);
+
+  function updateForm(next: TaskForm) {
+    setForm(next);
+    setDirty(true);
+  }
 
   function resetForm() {
     if (task) {
       setForm(formFromTask(task));
-      setError(null);
+      setDirty(false);
+      setSaveError(null);
     }
   }
 
@@ -82,7 +82,7 @@ export function TaskDetailPage() {
     if (!task || !form) return;
     const name = form.name.trim();
     if (!name) {
-      setError("Task name is required.");
+      setSaveError("Task name is required.");
       return;
     }
 
@@ -98,32 +98,35 @@ export function TaskDetailPage() {
       return;
     }
 
-    setSaving(true);
-    setError(null);
+    setSaveError(null);
     try {
       if (fieldsChanged) {
-        await updateTask(task.id, {
-          name,
-          payload: form.payload,
-          priority: form.priority,
-          imageId: form.imageId ? Number(form.imageId) : null,
+        await updateTaskMutation.mutateAsync({
+          id: task.id,
+          body: {
+            name,
+            payload: form.payload,
+            priority: form.priority,
+            imageId: form.imageId ? Number(form.imageId) : null,
+          },
         });
       }
       if (statusChanged) {
-        await updateTaskStatus(task.id, {
-          status: form.status,
-          errorMessage: form.errorMessage.trim() || null,
+        await updateStatusMutation.mutateAsync({
+          id: task.id,
+          body: {
+            status: form.status,
+            errorMessage: form.errorMessage.trim() || null,
+          },
         });
       }
-      await load(task.id);
+      setDirty(false);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setSaving(false);
+      setSaveError(messageOf(err));
     }
   }
 
-  if (loading) {
+  if (taskPending && !task) {
     return (
       <section className="panel">
         <p className="muted">Loading task…</p>
@@ -166,7 +169,7 @@ export function TaskDetailPage() {
         <input
           id="edit-name"
           value={form.name}
-          onChange={(event) => setForm({ ...form, name: event.target.value })}
+          onChange={(event) => updateForm({ ...form, name: event.target.value })}
           required
         />
 
@@ -175,14 +178,14 @@ export function TaskDetailPage() {
           id="edit-payload"
           rows={4}
           value={form.payload}
-          onChange={(event) => setForm({ ...form, payload: event.target.value })}
+          onChange={(event) => updateForm({ ...form, payload: event.target.value })}
         />
 
         <label htmlFor="edit-priority">Priority</label>
         <select
           id="edit-priority"
           value={form.priority}
-          onChange={(event) => setForm({ ...form, priority: event.target.value as Priority })}
+          onChange={(event) => updateForm({ ...form, priority: event.target.value as Priority })}
         >
           {PRIORITIES.map((priority) => (
             <option key={priority} value={priority}>
@@ -195,7 +198,7 @@ export function TaskDetailPage() {
         <select
           id="edit-image"
           value={form.imageId}
-          onChange={(event) => setForm({ ...form, imageId: event.target.value })}
+          onChange={(event) => updateForm({ ...form, imageId: event.target.value })}
         >
           <option value="">None</option>
           {jobImages.map((image) => (
@@ -209,7 +212,7 @@ export function TaskDetailPage() {
         <select
           id="edit-status"
           value={form.status}
-          onChange={(event) => setForm({ ...form, status: event.target.value as TaskStatus })}
+          onChange={(event) => updateForm({ ...form, status: event.target.value as TaskStatus })}
         >
           {STATUSES.map((status) => (
             <option key={status} value={status}>
@@ -223,7 +226,7 @@ export function TaskDetailPage() {
           id="edit-error"
           value={form.errorMessage}
           placeholder="Optional error message"
-          onChange={(event) => setForm({ ...form, errorMessage: event.target.value })}
+          onChange={(event) => updateForm({ ...form, errorMessage: event.target.value })}
         />
 
         <span />

@@ -1,26 +1,26 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { createJobImage, deleteJobImage, getJobImages } from "../api";
 import { DataTable } from "../components/DataTable";
 import { messageOf } from "../format";
+import { useCreateJobImage, useDeleteJobImage, useJobImages } from "../hooks/useJobImages";
 import { createAppColumnHelper } from "../table";
 import type { JobImage } from "../types";
 
 const columnHelper = createAppColumnHelper<JobImage>();
 
 export function JobImageListPage() {
-  const [images, setImages] = useState<JobImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const { data: images, isPending, error: imagesError } = useJobImages();
+  const createImageMutation = useCreateJobImage();
+  const deleteImageMutation = useDeleteJobImage();
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({ imageName: "", description: "" });
 
-  async function loadImages() {
-    setImages(await getJobImages());
-  }
+  const creating = createImageMutation.isPending;
+  const busyId = deleteImageMutation.isPending ? deleteImageMutation.variables : null;
+  const error = actionError ?? (imagesError ? messageOf(imagesError) : null);
 
   useEffect(() => {
     if (!createOpen) return;
@@ -32,23 +32,6 @@ export function JobImageListPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [createOpen, creating]);
-
-  useEffect(() => {
-    let active = true;
-    getJobImages()
-      .then((next) => {
-        if (active) setImages(next);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(messageOf(err));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   function openCreate() {
     setCreateError(null);
@@ -69,34 +52,26 @@ export function JobImageListPage() {
       setCreateError("Image name is required.");
       return;
     }
-    setCreating(true);
     setCreateError(null);
     try {
-      await createJobImage({
+      await createImageMutation.mutateAsync({
         imageName,
         description: createForm.description.trim() || null,
       });
       setCreateForm({ imageName: "", description: "" });
       setCreateOpen(false);
-      await loadImages();
     } catch (err: unknown) {
       setCreateError(messageOf(err));
-    } finally {
-      setCreating(false);
     }
   }
 
   async function onDelete(image: JobImage) {
     if (!window.confirm(`Delete image ${image.imageName}?`)) return;
-    setBusyId(image.id);
-    setError(null);
+    setActionError(null);
     try {
-      await deleteJobImage(image.id);
-      await loadImages();
+      await deleteImageMutation.mutateAsync(image.id);
     } catch (err: unknown) {
-      setError(messageOf(err));
-    } finally {
-      setBusyId(null);
+      setActionError(messageOf(err));
     }
   }
 
@@ -191,16 +166,16 @@ export function JobImageListPage() {
         </div>
       )}
 
-      {loading ? (
+      {isPending && !images ? (
         <p className="muted">Loading job images…</p>
       ) : (
         <DataTable
-          data={images}
+          data={images ?? []}
           columns={columns}
           getRowId={(image) => String(image.id)}
           initialSorting={[{ id: "id", desc: true }]}
           searchPlaceholder="Search job images…"
-          emptyMessage={images.length === 0 ? "No job images yet." : "No job images match that search."}
+          emptyMessage={(images ?? []).length === 0 ? "No job images yet." : "No job images match that search."}
         />
       )}
     </section>
