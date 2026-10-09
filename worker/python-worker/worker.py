@@ -9,7 +9,6 @@ from kafka import KafkaProducer
 KAFKA_TOPIC = "task-status-events"
 KAFKA_MAX_BLOCK_MS = 5_000            # send()/metadata fetch can't block longer than this
 KAFKA_REQUEST_TIMEOUT_MS = 5_000      # per-request broker timeout
-KAFKA_API_VERSION_TIMEOUT_MS = 5_000  # broker probing at startup
 KAFKA_RETRIES = 2                     # default is 0; allow a couple of retries
 KAFKA_SEND_TIMEOUT_S = 10             # max wait for broker ack of one status event
 KAFKA_CLOSE_TIMEOUT_S = 5             # max wait for broker ack when closing producer
@@ -43,7 +42,6 @@ def main():
         value_serializer=lambda value: json.dumps(value).encode("utf-8"),
         max_block_ms=KAFKA_MAX_BLOCK_MS,
         request_timeout_ms=KAFKA_REQUEST_TIMEOUT_MS,
-        api_version_auto_timeout_ms=KAFKA_API_VERSION_TIMEOUT_MS,
         retries=KAFKA_RETRIES,
     )
 
