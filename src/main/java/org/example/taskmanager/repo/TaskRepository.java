@@ -31,7 +31,16 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 	you add DISTINCT yourself — @EntityGraph handles that correctly without you having to think about it
   */
 
-	// TODO we can probably remove image
+	@EntityGraph(attributePaths = {"image"})
+	Optional<Task> findWithImageById(Long id);
+
+	@EntityGraph(attributePaths = {"image"})
+	List<Task> findAllWithImageBy();
+
+	/*
+	retrieving task with taskHistory is not used anymore
+	in frontend we query task and taskHistory separately, which is more efficient
+
 	@EntityGraph(attributePaths = {"history", "image"})
 	Optional<Task> findWithHistoryById(Long id);
 
@@ -47,5 +56,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
       value = "select distinct * from task t left join task_history th  on t.id = th.task_id",
       nativeQuery = true)
   List<Task> findAllWithHistoryNative();
+	*/
 }
 

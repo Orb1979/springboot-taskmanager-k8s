@@ -35,13 +35,13 @@ public class TaskService {
 
 	@Transactional(readOnly = true)
 	public Task getTask(Long id) {
-		return taskRepository.findWithHistoryById(id)
+		return taskRepository.findWithImageById(id)
 				       .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
 	}
 
 	@Transactional(readOnly = true)
 	public List<Task> getTasks() {
-		return taskRepository.findAllWithHistoryBy();
+		return taskRepository.findAllWithImageBy();
 	}
 
 	public Task createTask(TaskRequest request) {

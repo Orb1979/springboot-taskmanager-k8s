@@ -104,7 +104,6 @@ class TaskExecutionIntegrationTest {
 	  assertThat(reset.getStatus()).isEqualTo(TaskStatus.PENDING);
     assertThat(reRun.getStatus()).isEqualTo(TaskStatus.COMPLETED);
     assertThat(reRun.getFinishedAt()).isNotNull();
-    assertThat(reRun.getHistory().size()).isGreaterThan(1);
   }
 }
 

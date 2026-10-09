@@ -57,7 +57,7 @@ class TaskServiceTest {
   void getTask() {
 	  // Arrange
 		Task task = Task.builder().id(1L).name("test").build();
-	  when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(task));
+	  when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(task));
 		// Act
 		Task result = taskService.getTask(1L);
 	  // Assert
@@ -67,7 +67,7 @@ class TaskServiceTest {
 	@Test
 	void getTask_notFound() {
 		// Arrange
-		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
+		when(taskRepository.findWithImageById(9999L)).thenReturn(Optional.empty());
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class, ()-> taskService.getTask(9999L));
 	}
@@ -78,7 +78,7 @@ class TaskServiceTest {
 		Task task1 = Task.builder().id(1L).name("task1").build();
 		Task task2 = Task.builder().id(2L).name("task2").build();
 		List<Task> tasks = List.of(task1, task2);
-		when(taskRepository.findAllWithHistoryBy()).thenReturn(tasks);
+		when(taskRepository.findAllWithImageBy()).thenReturn(tasks);
 		// ACT
 		List<Task> result = taskService.getTasks();
 		// Assert
@@ -169,7 +169,7 @@ class TaskServiceTest {
 				                .priority(Priority.LOW)
 				                .build();
 
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 		TaskRequest request = new TaskRequest("new", null, null);
 		// Act
@@ -189,7 +189,7 @@ class TaskServiceTest {
 				                .payload("{}")
 				                .priority(Priority.LOW)
 				                .build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 		TaskRequest request = new TaskRequest("new", "{\"x\":1}", Priority.HIGH);
 		// Act
@@ -207,7 +207,7 @@ class TaskServiceTest {
 				                .id(1L)
 				                .payload("{}")
 				                .build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		// Act
 		Task result = taskService.updateTask(1L, new TaskRequest("task", "", Priority.HIGH));
@@ -223,7 +223,7 @@ class TaskServiceTest {
 				                .id(1L)
 				                .payload("{}")
 				                .build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		// Act + Assert
 		assertThrows(
 				TaskInvalidException.class,
@@ -235,7 +235,7 @@ class TaskServiceTest {
 	@Test
 	void updateTask_notFound() {
 		// Arrange
-		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
+		when(taskRepository.findWithImageById(9999L)).thenReturn(Optional.empty());
 		TaskRequest request = new TaskRequest("name", null, null);
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class, () -> taskService.updateTask(9999L, request));
@@ -248,7 +248,7 @@ class TaskServiceTest {
 				.imageName("worker-counter:v2")
 				.build();
 		Task existing = Task.builder().id(1L).name("task").build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		when(jobImageRepository.findById(5L)).thenReturn(Optional.of(image));
 		when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -261,7 +261,7 @@ class TaskServiceTest {
 	void updateTaskStatus_setsStatus() {
 		// Arrange
 		Task existing = Task.builder().id(1L).status(TaskStatus.PENDING).build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		// Act
 		taskService.updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.RUNNING));
 		// Assert
@@ -273,7 +273,7 @@ class TaskServiceTest {
 	void updateTaskStatus_setsFinishedAt_whenTerminal() {
 		// Arrange
 		Task existing = Task.builder().id(1L).status(TaskStatus.RUNNING).build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 		// Act
 		taskService.updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.COMPLETED));
 		// Assert
@@ -288,7 +288,7 @@ class TaskServiceTest {
 				                .status(TaskStatus.CANCELED)
 				                .finishedAt(LocalDateTime.now())
 				                .build();
-		when(taskRepository.findWithHistoryById(1L)).thenReturn(Optional.of(existing));
+		when(taskRepository.findWithImageById(1L)).thenReturn(Optional.of(existing));
 
 		taskService.updateTaskStatus(1L, new TaskStatusUpdate(TaskStatus.PENDING));
 
@@ -332,7 +332,7 @@ class TaskServiceTest {
 	@Test
 	void updateTaskStatus_notFound() {
 		// Arrange
-		when(taskRepository.findWithHistoryById(9999L)).thenReturn(Optional.empty());
+		when(taskRepository.findWithImageById(9999L)).thenReturn(Optional.empty());
 		// Act + Assert
 		assertThrows(ResourceNotFoundException.class,
 				() -> taskService.updateTaskStatus(9999L, new TaskStatusUpdate(TaskStatus.RUNNING)));

@@ -5,7 +5,6 @@ import org.example.taskmanager.entity.type.Priority;
 import org.example.taskmanager.entity.type.TaskStatus;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 public record TaskResponse(
@@ -18,7 +17,6 @@ public record TaskResponse(
     String payload,
     Priority priority,
     TaskStatus status,
-    List<TaskHistoryResponse> taskHistory,
     JobImageResponse image
 ) {
     public static TaskResponse from(Task task) {
@@ -32,7 +30,6 @@ public record TaskResponse(
                 task.getPayload(),
                 task.getPriority(),
                 task.getStatus(),
-                task.getHistory().stream().map(TaskHistoryResponse::from).toList(),
                 task.getImage() == null ? null : JobImageResponse.from(task.getImage())
         );
     }
