@@ -7,6 +7,13 @@ from datetime import datetime, timezone
 from kafka import KafkaProducer
 
 KAFKA_TOPIC = "task-status-events"
+KAFKA_MAX_BLOCK_MS = 5_000            # send()/metadata fetch can't block longer than this
+KAFKA_REQUEST_TIMEOUT_MS = 5_000      # per-request broker timeout
+KAFKA_API_VERSION_TIMEOUT_MS = 5_000  # broker probing at startup
+KAFKA_RETRIES = 2                     # default is 0; allow a couple of retries
+KAFKA_SEND_TIMEOUT_S = 10             # max wait for broker ack of one status event
+KAFKA_CLOSE_TIMEOUT_S = 5             # max wait for broker ack when closing producer
+
 producer = None
 task_ref_id = None
 
@@ -22,8 +29,7 @@ def format_error(error):
 
 def send_status(status, error_message=None):
     event = {"taskReferenceId": task_ref_id, "status": status, "errorMessage": error_message}
-    producer.send(KAFKA_TOPIC, value=event)
-    producer.flush()
+    producer.send(KAFKA_TOPIC, value=event).get(timeout=KAFKA_SEND_TIMEOUT_S)
     print(f"Sent event: {event}")
 
 def main():
@@ -35,6 +41,10 @@ def main():
     producer = KafkaProducer(
         bootstrap_servers=kafka_bootstrap_servers,
         value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+        max_block_ms=KAFKA_MAX_BLOCK_MS,
+        request_timeout_ms=KAFKA_REQUEST_TIMEOUT_MS,
+        api_version_auto_timeout_ms=KAFKA_API_VERSION_TIMEOUT_MS,
+        retries=KAFKA_RETRIES,
     )
 
     # parse data
@@ -60,7 +70,6 @@ if __name__ == "__main__":
         error_message = format_error(error)
         print(f"Worker failed: {error_message}")
 
-        # A failure before producer or TASK_ID initialization cannot be reported to Kafka.
         if producer is not None and task_ref_id is not None:
             try:
                 send_status("FAILED", "worker failed: " + error_message)
@@ -68,3 +77,9 @@ if __name__ == "__main__":
                 print(f"Could not send FAILED status to Kafka: {kafka_error}")
 
         raise
+    finally:
+        if producer is not None:
+            try:
+                producer.close(timeout=KAFKA_CLOSE_TIMEOUT_S)
+            except Exception as close_error:
+                print(f"Error closing Kafka producer: {close_error}")
