@@ -21,10 +21,18 @@ import java.util.function.Function;
 public class KubernetesService {
   private final KubernetesClient kubernetesClient;
   private final String namespace;
+  private final Long jobDeadlineSeconds;
+  private final Integer backoffLimit;
 
-  public KubernetesService(KubernetesClient kubernetesClient, @Value("${kubernetes.namespace}") String namespace) {
+  public KubernetesService(
+      KubernetesClient kubernetesClient,
+      @Value("${kubernetes.namespace}") String namespace,
+      @Value("${kubernetes.job_deadline_seconds}") Long jobDeadlineSeconds,
+      @Value("${kubernetes.backoff_limit}") Integer backoffLimit) {
     this.kubernetesClient = kubernetesClient;
     this.namespace = namespace;
+    this.jobDeadlineSeconds = jobDeadlineSeconds;
+    this.backoffLimit = backoffLimit;
   }
 
   public void createJob(String name, String image, Function<ContainerBuilder, ContainerBuilder > config) {
@@ -47,7 +55,8 @@ public class KubernetesService {
           .addToLabels("name", "worker") // Add KV label for easier cleanup or lookup
         .endMetadata()
         .withNewSpec()
-        .withBackoffLimit(0) // one failed pod causes the Job to fail immediately
+         .withActiveDeadlineSeconds(jobDeadlineSeconds)
+         .withBackoffLimit(backoffLimit)
         .withTtlSecondsAfterFinished(60)
           .withNewTemplate()
             .withNewSpec()
@@ -58,7 +67,7 @@ public class KubernetesService {
         .endSpec()
         .build();
 
-    //  Spin up the Job in the cluster
+   //  Spin up the Job in the cluster
    try {
       kubernetesClient.batch().v1().jobs().inNamespace(namespace).resource(k8sJob).create();
       log.info("Successfully launched Kubernetes job: {}", name);
