@@ -33,8 +33,8 @@ export function TaskDetailPage() {
   const { id } = useParams();
   const taskId = Number(id);
   const validId = Number.isFinite(taskId);
-  const { data: task, isPending: taskPending, error: taskError } = useTask(taskId, validId);
-  const { data: history = [], error: historyError } = useTaskHistory(taskId, validId);
+  const { data: task, isPending: taskPending, error: taskError } = useTask(taskId, validId, false);
+  const { data: history = [], error: historyError } = useTaskHistory(taskId, validId, 10000);
   const { data: jobImages = [] } = useJobImages();
   const updateTaskMutation = useUpdateTask();
   const updateStatusMutation = useUpdateTaskStatus();
