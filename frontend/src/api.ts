@@ -1,5 +1,8 @@
 import type { JobImage, JobImageRequest, K8sJob, Task, TaskHistory, TaskRequest, TaskStatusUpdate } from "./types";
 
+const REQUEST_TIMEOUT_MS = 15_000;
+const READ_REQUEST_TIMEOUT_MS = 10_000;
+
 /*
 Centralizes common HTTP request handling.
 - adds JSON headers
@@ -15,7 +18,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(path, { ...init, headers });
+  // set timeout signal
+  // this can e.g be handy when querying the kubernetes service, which could respond slowly
+  const isRead = (init?.method ?? "GET").toUpperCase() === "GET";
+  const timeoutSignal = isRead ? AbortSignal.timeout(READ_REQUEST_TIMEOUT_MS) : REQUEST_TIMEOUT_MS;
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+
+  const response = await fetch(path, { ...init, headers, signal });
   if (response.status === 204) {
     return undefined as T;
   }
