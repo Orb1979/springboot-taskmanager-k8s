@@ -14,29 +14,29 @@ import { LIVE_POLL_INTERVAL_MS } from "../queryClient";
 import { queryKeys } from "../queryKeys";
 import type { TaskRequest, TaskStatusUpdate } from "../types";
 
-export function useTasks() {
+export function useTasks(pollingInterval: number | false = LIVE_POLL_INTERVAL_MS) {
   return useQuery({
     queryKey: queryKeys.tasks.all,
     queryFn: getTasks,
-    refetchInterval: LIVE_POLL_INTERVAL_MS,
+    refetchInterval: pollingInterval,
   });
 }
 
-export function useTask(id: number, enabled = true) {
+export function useTask(id: number, enabled = true, pollingInterval: number | false = LIVE_POLL_INTERVAL_MS) {
   return useQuery({
     queryKey: queryKeys.tasks.detail(id),
     queryFn: () => getTask(id),
     enabled,
-    refetchInterval: LIVE_POLL_INTERVAL_MS,
+    refetchInterval: pollingInterval,
   });
 }
 
-export function useTaskHistory(id: number, enabled = true) {
+export function useTaskHistory(id: number, enabled = true, pollingInterval: number | false = LIVE_POLL_INTERVAL_MS) {
   return useQuery({
     queryKey: queryKeys.tasks.history(id),
     queryFn: () => getTaskHistory(id),
     enabled,
-    refetchInterval: LIVE_POLL_INTERVAL_MS,
+    refetchInterval: pollingInterval,
   });
 }
 
