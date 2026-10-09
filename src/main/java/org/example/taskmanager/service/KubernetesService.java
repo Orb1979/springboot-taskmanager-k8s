@@ -22,16 +22,19 @@ public class KubernetesService {
   private final KubernetesClient kubernetesClient;
   private final String namespace;
   private final Long jobDeadlineSeconds;
+  private final Integer ttlSecondsAfterFinished;
   private final Integer backoffLimit;
 
   public KubernetesService(
       KubernetesClient kubernetesClient,
       @Value("${kubernetes.namespace}") String namespace,
       @Value("${kubernetes.job_deadline_seconds}") Long jobDeadlineSeconds,
+      @Value("${kubernetes.ttl_seconds_after_finished}") Integer ttlSecondsAfterFinished,
       @Value("${kubernetes.backoff_limit}") Integer backoffLimit) {
     this.kubernetesClient = kubernetesClient;
     this.namespace = namespace;
     this.jobDeadlineSeconds = jobDeadlineSeconds;
+    this.ttlSecondsAfterFinished = ttlSecondsAfterFinished;
     this.backoffLimit = backoffLimit;
   }
 
@@ -56,8 +59,8 @@ public class KubernetesService {
         .endMetadata()
         .withNewSpec()
          .withActiveDeadlineSeconds(jobDeadlineSeconds)
+         .withTtlSecondsAfterFinished(ttlSecondsAfterFinished)
          .withBackoffLimit(backoffLimit)
-        .withTtlSecondsAfterFinished(60)
           .withNewTemplate()
             .withNewSpec()
               .addToContainers(container) // add the pre-built container
